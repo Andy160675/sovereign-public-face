@@ -32,3 +32,7 @@
 - [x] Configure Electron auto-update and native OS integration
 - [x] Update LinkedIn profile bio with business credentials (PARKED — human action doc created: LINKEDIN_PROFILE_UPDATE.md)
 - [x] Link LinkedIn to both websites (PARKED — included in LinkedIn doc)
+- [ ] Compile master directory of all old links, deployed services, domains, repos, and URLs
+- [ ] Integrate link directory into Public Face website as a consolidated portal page
+- [ ] Fix all name references — Andrew Jones only, remove all Kelly references
+- [ ] Compile master link directory from all sources

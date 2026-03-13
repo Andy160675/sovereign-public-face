@@ -17,6 +17,7 @@ const navItems = [
   { href: "/team", label: "Team" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
+  { href: "/portal", label: "Portal" },
 ];
 
 function NavLink({ href, label, active, onClick }: { href: string; label: string; active: boolean; onClick?: () => void }) {
@@ -189,7 +190,8 @@ export default function Layout({ children }: { children: ReactNode }) {
               <div className="flex flex-col gap-2.5">
                 <Link href="/about" className="text-muted-foreground hover:text-gold transition-colors text-[15px]">About</Link>
                 <Link href="/about" className="text-muted-foreground hover:text-gold transition-colors text-[15px]">Credentials</Link>
-                <Link href="/book" className="text-muted-foreground hover:text-gold transition-colors text-[15px]">Contact</Link>
+                <Link href="/portal" className="text-muted-foreground hover:text-gold transition-colors text-[15px]">Command Portal</Link>
+                <Link href="/contact" className="text-muted-foreground hover:text-gold transition-colors text-[15px]">Contact</Link>
               </div>
             </div>
 

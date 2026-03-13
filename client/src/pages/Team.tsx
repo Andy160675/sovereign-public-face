@@ -21,19 +21,13 @@ const fadeUp = {
 
 const teamMembers = [
   {
-    name: "Andy Pawlett",
+    name: "Andrew Jones",
     role: "Founder & Systems Architect",
     location: "Tenerife, Spain",
     description: "Elite systems developer (top 0.001%). Architect of Sovereign Elite OS, the Harls Theory mathematical framework, and the zero-SaaS operational doctrine. 25+ years in enterprise infrastructure.",
     tags: ["Infrastructure", "AI Governance", "Harls Theory", "Zero-SaaS"],
   },
-  {
-    name: "Kelly Pawlett",
-    role: "Operations Director",
-    location: "Tenerife, Spain",
-    description: "Manages day-to-day operations, client relationships, and the Tenerife SL entity. Oversees compliance documentation, financial operations, and service delivery coordination.",
-    tags: ["Operations", "Client Relations", "Compliance", "Finance"],
-  },
+
 ];
 
 const companyEntities = [
