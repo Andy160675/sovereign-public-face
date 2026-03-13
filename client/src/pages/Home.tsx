@@ -4,6 +4,7 @@
  * Progressive disclosure: Hero → Value Prop → Products → Trust → CTA
  * ND-friendly: High contrast, generous spacing, clear hierarchy.
  */
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Shield, ArrowRight, CheckCircle2, FileCheck, Cpu, Lock, Zap, BookOpen } from "lucide-react";
@@ -63,6 +64,10 @@ const trustSignals = [
 ];
 
 export default function Home() {
+  // The userAuth hooks provides authentication state
+  // To implement login/logout functionality, simply call logout() or redirect to getLoginUrl()
+  let { user, loading, error, isAuthenticated, logout } = useAuth();
+
   return (
     <div>
       {/* Hero Section */}

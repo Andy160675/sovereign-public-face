@@ -1,0 +1,28 @@
+# Project TODO
+
+- [x] Basic homepage layout — Sovereign Obsidian design
+- [x] Navigation menu with all pages
+- [x] Home page with hero, value prop, products, trust signals
+- [x] AI Audit page (£99 landing page)
+- [x] Packs page (Operational AI Packs + Compliance Prompt Pack)
+- [x] About page with credentials
+- [x] Book a Call page
+- [x] Push to GitHub (sovereign-public-face)
+- [x] Find original main site content (PublicLanding.tsx — 49KB from Drive)
+- [x] Search all monetisation updates (stripe_products.json, MONETISATION docs)
+- [x] Resolve web-db-user upgrade conflicts — restore Sovereign Obsidian Home.tsx
+- [x] Restore all custom pages (Audit, Packs, About, Book) after upgrade
+- [x] Integrate team page content from original PublicLanding.tsx
+- [x] Create Services page with all 6 services + pricing tiers + hosting costs
+- [x] Create Team page with personnel, entities, Sovereign Elite OS details
+- [x] Create Contact page with enquiry form + FAQ section
+- [x] Wire tRPC auth into Layout (login/logout)
+- [x] Write vitest tests for key routes
+- [ ] Add Stripe integration with all 10 products from stripe_products.json
+- [ ] Create product catalog page with Stripe checkout
+- [ ] Add Formspree contact form endpoint
+- [ ] Add PostHog analytics tracking
+- [ ] Push to GitHub with full integration
+- [ ] Update Tenerife site with team content
+- [ ] Add Formspree + PostHog to Tenerife site
+- [ ] Bind sovereignsanctuarysystemstenerife.com via GoDaddy DNS

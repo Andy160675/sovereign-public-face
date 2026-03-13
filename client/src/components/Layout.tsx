@@ -11,10 +11,12 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const navItems = [
   { href: "/", label: "Home" },
+  { href: "/services", label: "Services" },
   { href: "/audit", label: "AI Audit" },
   { href: "/packs", label: "Packs" },
+  { href: "/team", label: "Team" },
   { href: "/about", label: "About" },
-  { href: "/book", label: "Book a Call" },
+  { href: "/contact", label: "Contact" },
 ];
 
 function NavLink({ href, label, active, onClick }: { href: string; label: string; active: boolean; onClick?: () => void }) {

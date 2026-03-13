@@ -9,6 +9,9 @@ import Audit from "./pages/Audit";
 import Packs from "./pages/Packs";
 import About from "./pages/About";
 import Book from "./pages/Book";
+import Team from "./pages/Team";
+import Services from "./pages/Services";
+import Contact from "./pages/Contact";
 import Layout from "./components/Layout";
 
 function Router() {
@@ -18,8 +21,11 @@ function Router() {
         <Route path={"/"} component={Home} />
         <Route path={"/audit"} component={Audit} />
         <Route path={"/packs"} component={Packs} />
+        <Route path={"/services"} component={Services} />
         <Route path={"/about"} component={About} />
+        <Route path={"/team"} component={Team} />
         <Route path={"/book"} component={Book} />
+        <Route path={"/contact"} component={Contact} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>
