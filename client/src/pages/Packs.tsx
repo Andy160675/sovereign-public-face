@@ -6,9 +6,13 @@
  */
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { Shield, ArrowRight, CheckCircle2, Package, FileText, Cpu, Lock, BarChart3, Users } from "lucide-react";
+import { Shield, ArrowRight, CheckCircle2, Package, FileText, Cpu, Lock, BarChart3, Users, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
+import { useState } from "react";
 
 const packs = [
   {
@@ -90,6 +94,31 @@ const packs = [
 ];
 
 export default function Packs() {
+  const { isAuthenticated } = useAuth();
+  const [checkingOutId, setCheckingOutId] = useState<string | null>(null);
+  const createSession = trpc.checkout.createSession.useMutation({
+    onSuccess: (data) => {
+      if (data.url) {
+        toast.info("Redirecting to secure checkout...");
+        window.open(data.url, "_blank");
+      }
+      setCheckingOutId(null);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Checkout failed. Please try again.");
+      setCheckingOutId(null);
+    },
+  });
+
+  const handleCheckout = (productId: string) => {
+    if (!isAuthenticated) {
+      window.location.href = getLoginUrl();
+      return;
+    }
+    setCheckingOutId(productId);
+    createSession.mutate({ productId });
+  };
+
   return (
     <div>
       {/* Hero */}
@@ -191,10 +220,14 @@ export default function Packs() {
                     </div>
                     <Button
                       className="bg-gold text-obsidian font-semibold hover:bg-gold-dim transition-all duration-200 active:scale-[0.98] text-[14px]"
-                      onClick={() => toast.info("Stripe checkout integration coming soon. Contact us to proceed.")}
+                      onClick={() => handleCheckout(pack.id === "enterprise" ? "infrastructure-audit" : "strategic-consultation")}
+                      disabled={checkingOutId !== null}
                     >
-                      Purchase Pack
-                      <ArrowRight className="ml-2 w-3.5 h-3.5" />
+                      {checkingOutId === (pack.id === "enterprise" ? "infrastructure-audit" : "strategic-consultation") ? (
+                        <><Loader2 className="mr-2 w-3.5 h-3.5 animate-spin" /> Processing...</>
+                      ) : (
+                        <>Purchase Pack <ArrowRight className="ml-2 w-3.5 h-3.5" /></>
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -245,9 +278,14 @@ export default function Packs() {
               </div>
               <Button
                 className="w-full bg-gold text-obsidian font-semibold hover:bg-gold-dim transition-all duration-200 active:scale-[0.98] h-11 text-[14px]"
-                onClick={() => toast.info("Stripe checkout integration coming soon. Contact us to proceed.")}
+                onClick={() => handleCheckout("compliance-prompt-pack")}
+                disabled={checkingOutId !== null}
               >
-                Download Prompt Pack — £29
+                {checkingOutId === "compliance-prompt-pack" ? (
+                  <><Loader2 className="mr-2 w-3.5 h-3.5 animate-spin" /> Processing...</>
+                ) : (
+                  <>Download Prompt Pack — £29</>
+                )}
               </Button>
             </motion.div>
           </div>

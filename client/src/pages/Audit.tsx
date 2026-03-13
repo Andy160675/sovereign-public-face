@@ -6,8 +6,13 @@
  */
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { Shield, CheckCircle2, ArrowRight, Clock, FileText, AlertTriangle, BarChart3, Lock, Zap } from "lucide-react";
+import { Shield, CheckCircle2, ArrowRight, Clock, FileText, AlertTriangle, BarChart3, Lock, Zap, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
+import { toast } from "sonner";
+import { useState } from "react";
 
 const auditIncludes = [
   { icon: BarChart3, title: "Risk Classification", desc: "Full AI system inventory with EU AI Act risk tier mapping (Unacceptable, High, Limited, Minimal)." },
@@ -19,6 +24,31 @@ const auditIncludes = [
 ];
 
 export default function Audit() {
+  const { isAuthenticated } = useAuth();
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const createSession = trpc.checkout.createSession.useMutation({
+    onSuccess: (data) => {
+      if (data.url) {
+        toast.info("Redirecting to secure checkout...");
+        window.open(data.url, "_blank");
+      }
+      setIsCheckingOut(false);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Checkout failed. Please try again.");
+      setIsCheckingOut(false);
+    },
+  });
+
+  const handleCheckout = () => {
+    if (!isAuthenticated) {
+      window.location.href = getLoginUrl();
+      return;
+    }
+    setIsCheckingOut(true);
+    createSession.mutate({ productId: "ai-compliance-audit" });
+  };
+
   return (
     <div>
       {/* Hero */}
@@ -215,16 +245,14 @@ export default function Audit() {
               <Button
                 size="lg"
                 className="w-full bg-gold text-obsidian font-semibold hover:bg-gold-dim transition-all duration-200 active:scale-[0.98] h-12 text-[15px]"
-                onClick={() => {
-                  /* Stripe checkout will be integrated here */
-                  import("sonner").then(({ toast }) => {
-                    toast.info("Stripe checkout integration coming soon. Contact us to proceed.", {
-                      duration: 5000,
-                    });
-                  });
-                }}
+                onClick={handleCheckout}
+                disabled={isCheckingOut}
               >
-                Purchase Audit — £99
+                {isCheckingOut ? (
+                  <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Processing...</>
+                ) : (
+                  <>Purchase Audit — £99</>  
+                )}
               </Button>
 
               <p className="text-muted-foreground/50 text-xs font-mono mt-4 tracking-wider">

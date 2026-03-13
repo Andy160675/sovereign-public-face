@@ -1,0 +1,57 @@
+# Sovereign Sanctuary Systems — Electron Builder Configuration
+# Build desktop apps for Windows, macOS, and Linux
+#
+# Usage:
+#   pnpm electron:build        # Build for current platform
+#   pnpm electron:build:win    # Build for Windows
+#   pnpm electron:build:mac    # Build for macOS
+#   pnpm electron:build:linux  # Build for Linux
+
+appId: com.sovereignsanctuary.systems
+productName: Sovereign Sanctuary Systems
+copyright: Copyright © 2024 Sovereign Sanctuary Systems Ltd
+
+directories:
+  output: electron-dist
+  buildResources: electron/resources
+
+files:
+  - electron/**/*
+  - "!electron/resources"
+
+mac:
+  category: public.app-category.business
+  target:
+    - dmg
+    - zip
+  darkModeSupport: true
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: electron/entitlements.mac.plist
+  entitlementsInherit: electron/entitlements.mac.plist
+
+win:
+  target:
+    - nsis
+    - portable
+  artifactName: "${productName}-${version}-Setup.${ext}"
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Sovereign
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Office
+  maintainer: Sovereign Sanctuary Systems Ltd
+
+publish:
+  provider: github
+  owner: Andy160675
+  repo: sovereign-public-face
+  releaseType: release

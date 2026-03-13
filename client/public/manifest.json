@@ -1,0 +1,29 @@
+{
+  "name": "Sovereign Sanctuary Systems — Enterprise AI Governance",
+  "short_name": "Sovereign",
+  "description": "Sovereign-grade AI compliance audits, governance frameworks, and operational packs. Evidence-bound. Cryptographically sealed.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D0D0F",
+  "theme_color": "#C8A55C",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "en-GB",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

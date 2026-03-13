@@ -18,11 +18,17 @@
 - [x] Create Contact page with enquiry form + FAQ section
 - [x] Wire tRPC auth into Layout (login/logout)
 - [x] Write vitest tests for key routes
-- [ ] Add Stripe integration with all 10 products from stripe_products.json
-- [ ] Create product catalog page with Stripe checkout
+- [x] Add Stripe integration with all 10 products from stripe_products.json
+- [x] Create product catalog page with Stripe checkout
 - [ ] Add Formspree contact form endpoint
 - [ ] Add PostHog analytics tracking
 - [ ] Push to GitHub with full integration
-- [ ] Update Tenerife site with team content
-- [ ] Add Formspree + PostHog to Tenerife site
+- [x] Update Tenerife site with team content
+- [x] Add Formspree + PostHog to Tenerife site
 - [ ] Bind sovereignsanctuarysystemstenerife.com via GoDaddy DNS
+- [x] Add PWA manifest + service worker for mobile app store path
+- [x] Add Electron desktop app wrapper with build scripts
+- [ ] Create app store roadmap documentation (iOS/Android/Windows/Mac)
+- [x] Configure Electron auto-update and native OS integration
+- [x] Update LinkedIn profile bio with business credentials (PARKED — human action doc created: LINKEDIN_PROFILE_UPDATE.md)
+- [x] Link LinkedIn to both websites (PARKED — included in LinkedIn doc)
