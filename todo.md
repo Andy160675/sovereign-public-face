@@ -20,15 +20,15 @@
 - [x] Write vitest tests for key routes
 - [x] Add Stripe integration with all 10 products from stripe_products.json
 - [x] Create product catalog page with Stripe checkout
-- [ ] Add Formspree contact form endpoint
-- [ ] Add PostHog analytics tracking
-- [ ] Push to GitHub with full integration
+- [ ] Add Formspree contact form endpoint (PARKED — requires Formspree account setup, human action)
+- [ ] Add PostHog analytics tracking (PARKED — requires PostHog project setup, human action)
+- [x] Push to GitHub with full integration
 - [x] Update Tenerife site with team content
 - [x] Add Formspree + PostHog to Tenerife site
-- [ ] Bind sovereignsanctuarysystemstenerife.com via GoDaddy DNS
+- [ ] Bind sovereignsanctuarysystemstenerife.com via GoDaddy DNS (PARKED — human action, credentials in godaddy_tenerife_account.md)
 - [x] Add PWA manifest + service worker for mobile app store path
 - [x] Add Electron desktop app wrapper with build scripts
-- [ ] Create app store roadmap documentation (iOS/Android/Windows/Mac)
+- [x] Create app store roadmap documentation (iOS/Android/Windows/Mac)
 - [x] Configure Electron auto-update and native OS integration
 - [x] Update LinkedIn profile bio with business credentials (PARKED — human action doc created: LINKEDIN_PROFILE_UPDATE.md)
 - [x] Link LinkedIn to both websites (PARKED — included in LinkedIn doc)
