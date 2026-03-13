@@ -38,3 +38,9 @@
 - [x] Compile master link directory from all sources
 - [x] Compile all cash generation project links from every source
 - [x] Integrate cash generation links into Public Face website (Portal page + CASH_GENERATION_PROJECTS.md)
+- [x] Research target demographics for AI compliance/governance services
+- [x] Define buyer personas and pain points for each demographic segment
+- [x] Rework Home page with demographic-targeted pitch and funnel (SME pain points, Big 4 comparison, compliance urgency)
+- [x] Strengthen Services page with SME-targeted plain English messaging, pricing ladder, honest hosting costs
+- [x] Strengthen About page with Andy Jones founder story, Big 4 comparison table, ND-friendly principles
+- [x] Rewrite AI Audit page with SME compliance funnel (pain → urgency → solution → FAQ → buy box)
