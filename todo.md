@@ -36,3 +36,5 @@
 - [x] Integrate link directory into Public Face website as a consolidated portal page
 - [x] Fix all name references — Andrew Jones only, remove all Kelly references
 - [x] Compile master link directory from all sources
+- [x] Compile all cash generation project links from every source
+- [x] Integrate cash generation links into Public Face website (Portal page + CASH_GENERATION_PROJECTS.md)
