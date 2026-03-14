@@ -9,12 +9,6 @@
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
-  "functions": {
-    "dist/index.js": {
-      "runtime": "@vercel/node@3",
-      "maxDuration": 30
-    }
-  },
   "headers": [
     {
       "source": "/assets/(.*)",
