@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'">
+  <title>Open Command Centre</title>
+  <meta name="description" content="A provider-neutral, local-first command-centre shell for one queue, clear ownership, authority boundaries and evidence-backed closure.">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to command centre</a>
+  <header class="topbar">
+    <div class="brand"><span class="mark">O</span><div><strong>Open Command Centre</strong><small>MIT · provider-neutral · local-first</small></div></div>
+    <div class="posture"><span>Execution</span><strong>ADAPTER-GATED</strong></div>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <nav id="tabs" aria-label="Command views"></nav>
+      <section class="side-card">
+        <span class="eyebrow">Operating rule</span>
+        <strong>One queue. Many views.</strong>
+        <p>Views are projections of the same admitted records, never competing task systems.</p>
+      </section>
+      <section class="side-card">
+        <span class="eyebrow">Data</span>
+        <strong id="feed-state">LOADING</strong>
+        <p id="feed-note">Loading the bundled example feed.</p>
+      </section>
+    </aside>
+
+    <main id="main" tabindex="-1">
+      <section class="hero">
+        <div>
+          <span class="eyebrow">Open operational shell</span>
+          <h1>What matters, who owns it, what happens next, and what proves closure.</h1>
+          <p>This repository supplies the interface and action contract. Connect your own private policy engine, identity provider, storage and workers behind the adapter boundary.</p>
+        </div>
+        <div class="controls">
+          <label class="file-button">Load feed<input id="feed-file" type="file" accept="application/json"></label>
+          <button id="reset-feed" type="button">Reset example</button>
+          <button id="export-feed" type="button">Export current</button>
+        </div>
+      </section>
+
+      <section id="summary" class="summary" aria-label="Queue summary"></section>
+      <section id="view" class="view" aria-live="polite"></section>
+
+      <details class="contract">
+        <summary>Adapter and safety boundary</summary>
+        <div>
+          <p>The shell validates and displays records. It does not grant authority, send messages, move money, publish, merge code or call external tools.</p>
+          <p>Consequential execution belongs behind an authenticated adapter that evaluates identity, authority, policy, evidence, duplication, suppression and stop events.</p>
+        </div>
+      </details>
+    </main>
+  </div>
+
+  <footer>Open Command Centre · MIT License · no external dependency required</footer>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
