@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "open-command-centre.feed.v1",
+  "name": "Example operating feed",
+  "updatedAt": "2026-09-03T00:00:00Z",
+  "actions": [
+    {
+      "id": "OPS-QUEUE-001",
+      "view": "NOW",
+      "outcome": "Run the organisation from one admitted chronological queue.",
+      "owner": "Operations Lead",
+      "authority": "DELEGATED · operating envelope",
+      "nextAction": "Route the next eligible action and return its receipt to the same queue.",
+      "deadline": "ONGOING",
+      "blocker": "NONE",
+      "state": "IN_PROGRESS",
+      "evidence": ["receipt:queue-contract-001"],
+      "escalation": "Executive Sponsor · reserved or unclear authority",
+      "priority": "P0"
+    },
+    {
+      "id": "OPS-BLOCKER-001",
+      "view": "NOW",
+      "outcome": "Remove the single integration blocker preventing automated handoff.",
+      "owner": "Platform Lead",
+      "authority": "DELEGATED · reversible integration work",
+      "nextAction": "Verify the adapter contract against one synthetic record.",
+      "deadline": "2026-09-04",
+      "blocker": "Worker identity is not yet mapped to an authenticated account.",
+      "state": "BLOCKED",
+      "evidence": [],
+      "escalation": "Executive Sponsor · access expansion required",
+      "priority": "P0"
+    },
+    {
+      "id": "MONEY-RUNWAY-001",
+      "view": "MONEY",
+      "outcome": "Keep operating cost inside the approved monthly ceiling.",
+      "owner": "Finance Owner",
+      "authority": "RESERVED · financial commitment",
+      "nextAction": "Approve or reject the proposed recurring cost.",
+      "deadline": "2026-09-05",
+      "blocker": "Named approval is absent.",
+      "state": "RESERVED",
+      "evidence": ["quote:provider-001"],
+      "escalation": "Finance Owner · any spend or debt",
+      "priority": "P0"
+    },
+    {
+      "id": "SALES-PROOF-001",
+      "view": "SALES",
+      "outcome": "Convert one qualified conversation into a bounded paid proof.",
+      "owner": "Commercial Lead",
+      "authority": "DELEGATED · preparation only",
+      "nextAction": "Prepare the written offer for named-human approval.",
+      "deadline": "2026-09-06",
+      "blocker": "NONE",
+      "state": "READY",
+      "evidence": ["conversation:qualified-001"],
+      "escalation": "Executive Sponsor · price, promise, contract or payment",
+      "priority": "P1"
+    },
+    {
+      "id": "PEOPLE-ACCESS-001",
+      "view": "PEOPLE",
+      "outcome": "Give each operator the minimum access needed for assigned work.",
+      "owner": "Security Owner",
+      "authority": "UNCLEAR · identity evidence incomplete",
+      "nextAction": "Resolve the account-to-person mapping before granting access.",
+      "deadline": "UNKNOWN",
+      "blocker": "Identity assurance is incomplete.",
+      "state": "UNCLEAR",
+      "evidence": ["access-review:001"],
+      "escalation": "Security Owner · permission or credential boundary",
+      "priority": "P1"
+    }
+  ]
+}
