@@ -32,7 +32,9 @@ jobs:
         run: pnpm test
 
       - name: Build production bundle
+        if: always()
         run: pnpm build
 
       - name: Verify production bundle boundary
+        if: always()
         run: pnpm run verify:public-bundle
