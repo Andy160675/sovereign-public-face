@@ -6,10 +6,6 @@ import { PRODUCTS, getProductById } from "./products";
 import { z } from "zod";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-02-25.clover",
-});
-
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -99,6 +95,14 @@ export const appRouter = router({
           cancel_url: `${origin}/checkout/cancel`,
         };
 
+        const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+        if (!stripeSecretKey) {
+          throw new Error("Checkout is temporarily unavailable.");
+        }
+
+        const stripe = new Stripe(stripeSecretKey, {
+          apiVersion: "2026-02-25.clover",
+        });
         const session = await stripe.checkout.sessions.create(sessionParams);
         return { url: session.url };
       }),
