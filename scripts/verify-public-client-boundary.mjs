@@ -8,7 +8,10 @@ const portalPath = join(clientRoot, "src", "pages", "Portal.tsx");
 const requireBundle = process.argv.includes("--require-bundle");
 
 const prohibitedPatterns = [
-  ["public /portal route or link", /["'`]\/portal(?:["'`?#]|$)/i],
+  [
+    "public /portal route or link",
+    /["'`](?:https?:\/\/[^"'`\s]+)?\/portal(?:\/|[?:#"'`]|$)/i,
+  ],
   ["Portal page import", /(?:from\s*|import\s*\()\s*["'][^"']*pages\/Portal(?:\.[cm]?[jt]sx?)?["']/i],
   ["internal command-directory copy", /Sovereign Command Directory/i],
   [
