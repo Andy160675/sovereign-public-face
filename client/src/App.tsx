@@ -15,7 +15,6 @@ import Contact from "./pages/Contact";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import CheckoutCancel from "./pages/CheckoutCancel";
 import Layout from "./components/Layout";
-import Portal from "./pages/Portal";
 
 function Router() {
   return (
@@ -29,7 +28,6 @@ function Router() {
         <Route path={"/team"} component={Team} />
         <Route path={"/book"} component={Book} />
         <Route path={"/contact"} component={Contact} />
-        <Route path={"/portal"} component={Portal} />
         <Route path={"/checkout/success"} component={CheckoutSuccess} />
         <Route path={"/checkout/cancel"} component={CheckoutCancel} />
         <Route path={"/404"} component={NotFound} />
