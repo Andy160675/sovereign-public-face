@@ -2,13 +2,19 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { extname, join, relative, resolve } from "node:path";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
-const clientRoot = join(repositoryRoot, "client", "src");
+const clientRoot = join(repositoryRoot, "client");
 const bundleRoot = join(repositoryRoot, "dist", "public");
-const portalPath = join(clientRoot, "pages", "Portal.tsx");
+const portalPath = join(clientRoot, "src", "pages", "Portal.tsx");
 const requireBundle = process.argv.includes("--require-bundle");
 
 const prohibitedPatterns = [
+  ["public /portal route or link", /["'`]\/portal(?:["'`?#]|$)/i],
+  ["Portal page import", /(?:from\s*|import\s*\()\s*["'][^"']*pages\/Portal(?:\.[cm]?[jt]sx?)?["']/i],
   ["internal command-directory copy", /Sovereign Command Directory/i],
+  [
+    "operational-directory category",
+    /(?:GitHub Repositories \(Active\)|Stripe Products \(Test Mode\)|Domain Estate \(\d+ Domains\)|Email Accounts|Slack Workspace|Infrastructure Services|Google Drive Key Folders)/i,
+  ],
   ["internal Manus deployment URL", /https:\/\/[a-z0-9.-]+\.manus\.space\b/i],
   ["domain-expiry inventory", /\bExpires?\s+\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\b/],
   ["mail-service port inventory", /\b(?:IMAP|SMTP)\s+\d{2,5}\b/i],
@@ -19,7 +25,10 @@ function sourceFiles(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) return sourceFiles(path);
-    return [".ts", ".tsx", ".js", ".jsx", ".json", ".html", ".css", ".map"].includes(extname(path))
+    return [
+      ".ts", ".tsx", ".js", ".jsx", ".json", ".html", ".css", ".map",
+      ".svg", ".txt", ".webmanifest", ".xml", ".md",
+    ].includes(extname(path))
       ? [path]
       : [];
   });
@@ -56,7 +65,7 @@ if (violations.length > 0) {
 } else {
   console.log(
     requireBundle
-      ? "Public-client source and production bundle verified: no operational directory data found."
-      : "Public-client source verified: no operational directory data found.",
+      ? "Public client and production bundle verified: no known portal route or operational-directory signatures found."
+      : "Public client verified: no known portal route or operational-directory signatures found.",
   );
 }
