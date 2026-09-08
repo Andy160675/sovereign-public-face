@@ -6,10 +6,6 @@ import type { Express } from "express";
 import express from "express";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-02-25.clover",
-});
-
 export function registerStripeWebhook(app: Express) {
   app.post(
     "/api/stripe/webhook",
@@ -22,6 +18,17 @@ export function registerStripeWebhook(app: Express) {
         console.warn("[Stripe Webhook] Missing signature or webhook secret");
         return res.status(400).json({ error: "Missing signature or secret" });
       }
+
+      const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeSecretKey) {
+        return res
+          .status(503)
+          .json({ error: "Stripe webhook is temporarily unavailable." });
+      }
+
+      const stripe = new Stripe(stripeSecretKey, {
+        apiVersion: "2026-02-25.clover",
+      });
 
       let event: Stripe.Event;
 

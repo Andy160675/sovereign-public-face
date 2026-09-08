@@ -9,7 +9,9 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
-    "test": "vitest run",
+    "verify:public-client": "node scripts/verify-public-client-boundary.mjs",
+    "verify:public-bundle": "node scripts/verify-public-client-boundary.mjs --require-bundle",
+    "test": "pnpm run verify:public-client && vitest run",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {
