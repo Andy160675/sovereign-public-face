@@ -27,3 +27,11 @@
 ## Related production note (t736u)
 
 `STRIPE_SECRET_KEY` is **CONFIGURED** on Production for bound project `prj_0F4lm0ET6Xo3uB09JYXsS6x1obWg`. Do not report all seven inputs as SOURCE ABSENT.
+
+## Codex packaging handoff
+
+- Candidate mount: `/var/task/.private/jarus/index.js`
+- Expected pin: `3d32f1514bb089f4f93bd46745b30af8080cbafa54fa71e23572a02f203d3802` (Blade prepared; re-hash on host).
+- Inject `JARUS_RECEIPT_ENGINE_PATH` and `JARUS_RECEIPT_ENGINE_SHA256` from the bytes actually mounted.
+- Forge never vendors `jarus` into the public repository; Codex owns the provider layer, `includeFiles`, and deploy.
+- Preview ≠ production. MySQL is still **ABSENT** (Postgres ≠ MySQL). `STRIPE_SECRET_KEY` is **CONFIGURED** — do not re-ask.
