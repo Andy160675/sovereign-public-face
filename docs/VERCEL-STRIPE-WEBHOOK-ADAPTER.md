@@ -1,7 +1,20 @@
 # Vercel Stripe webhook adapter (Stage 4 PREPARE)
 
-**scope:** source adapter only. Codex owns Vercel project create/link/settings/deploy.  
+**scope:** source adapter only. Codex owns Vercel project create/link/settings/env/deploy.  
 **surface:** `POST /api/stripe/webhook` — **RECORDED_ONLY**. Check 3 business effect **HELD**.
+
+## Bound host TARGET (t727u — G1 CLOSED; docs only — no Vercel mutate here)
+
+| Item | Value |
+|------|-------|
+| Vercel project name | `sovereign-public-face` |
+| Project id | `prj_0F4lm0ET6Xo3uB09JYXsS6x1obWg` |
+| Team id | `team_r5WswUIfukbM16eQNWHGXT1S` |
+| Intended webhook URL | `https://sovereign-public-face.vercel.app/api/stripe/webhook` |
+| Prod env vars today | **ZERO** — Codex injects receipt/Stripe names later |
+| Attach to `codex-sovereign` | **FORBIDDEN** |
+
+This document **names** the host. Forge does **not** create/link/delete the project, set env, or deploy.
 
 ## What this adapter does
 
