@@ -11,7 +11,11 @@
  *
  * Registered BEFORE express.json() to receive raw body for signature verification.
  */
-import type { Express, Request, Response } from "express";
+import type {
+  Express,
+  Request as ExpressRequest,
+  Response as ExpressResponse,
+} from "express";
 import express from "express";
 import Stripe from "stripe";
 import {
@@ -100,7 +104,7 @@ function eventFingerprint(event: Stripe.Event): string {
   });
 }
 
-function respond(res: Response, result: HttpResult): void {
+function respond(res: ExpressResponse, result: HttpResult): void {
   res.status(result.status).json(result.body);
 }
 
@@ -125,7 +129,7 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
   app.post(
     "/api/stripe/webhook",
     express.raw({ type: "application/json" }),
-    async (req: Request, res: Response) => {
+    async (req: ExpressRequest, res: ExpressResponse) => {
       const rawBody: Buffer = Buffer.isBuffer(req.body)
         ? req.body
         : Buffer.from(typeof req.body === "string" ? req.body : JSON.stringify(req.body ?? ""));
