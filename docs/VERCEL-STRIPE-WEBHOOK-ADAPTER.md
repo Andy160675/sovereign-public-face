@@ -56,7 +56,7 @@ to that digest.
 | Item | Value |
 |------|-------|
 | Engine SHA-256 | `3d32f1514bb089f4f93bd46745b30af8080cbafa54fa71e23572a02f203d3802` |
-| Prepared path (Blade) | `C:\\Users\\andyj\\Workspace\\stripe-webhook-host-20260921\\.vercel\\qualification\\output` |
+| Prepared path (Blade) | `stripe-webhook-host-20260921/.vercel/qualification/output` (under `C:/Users/andyj/Workspace/`) |
 | Status | **NOT host-qualified** — Linux-local / Blade prepared output only |
 | Do **not** claim | Forge-box pin `eb95f633…` is this pin |
 | Do **not** vendor | Private `jarus/` into this public git repo |
