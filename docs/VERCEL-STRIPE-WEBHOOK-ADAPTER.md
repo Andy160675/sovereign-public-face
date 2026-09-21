@@ -11,7 +11,7 @@
 | Project id | `prj_0F4lm0ET6Xo3uB09JYXsS6x1obWg` |
 | Team id | `team_r5WswUIfukbM16eQNWHGXT1S` |
 | Intended webhook URL | `https://sovereign-public-face.vercel.app/api/stripe/webhook` |
-| Prod env vars today | **ZERO** — Codex injects receipt/Stripe names later |
+| Prod env vars today | **`STRIPE_SECRET_KEY` CONFIGURED** (Production, sensitive). Remaining six still need Codex provision / host pin inject — do **not** claim all-seven SOURCE ABSENT |
 | Attach to `codex-sovereign` | **FORBIDDEN** |
 
 This document **names** the host. Forge does **not** create/link/delete the project, set env, or deploy.
@@ -50,6 +50,19 @@ Box/CI pin is **evidence only**, not production proof. Production must re-hash t
 bytes actually mounted on the Vercel function and set `JARUS_RECEIPT_ENGINE_SHA256`
 to that digest.
 
+
+## Blade qualification pin (local package proof ONLY)
+
+| Item | Value |
+|------|-------|
+| Engine SHA-256 | `3d32f1514bb089f4f93bd46745b30af8080cbafa54fa71e23572a02f203d3802` |
+| Prepared path (Blade) | `C:\\Users\\andyj\\Workspace\\stripe-webhook-host-20260921\\.vercel\\qualification\\output` |
+| Status | **NOT host-qualified** — Linux-local / Blade prepared output only |
+| Do **not** claim | Forge-box pin `eb95f633…` is this pin |
+| Do **not** vendor | Private `jarus/` into this public git repo |
+
+After a real deploy, Codex must inject `JARUS_RECEIPT_ENGINE_PATH` + `JARUS_RECEIPT_ENGINE_SHA256` from the **bytes actually mounted** on the Vercel function (re-hash on host; do not copy the Blade digest blindly if packaging changes).
+
 ## Ownership
 
 | Surface | Owner |
@@ -76,3 +89,16 @@ pnpm test   # or: node scripts/ci-with-jarus-pin.mjs
 
 Adapter suite: `server/stripe-webhook-vercel-adapter.test.ts` — raw-body
 preservation, invalid signature fail-closed (400), valid fixture → RECORDED_ONLY.
+
+## TypeScript / Vercel builder (TS2339)
+
+Root `tsconfig.json` previously omitted `api/**` from `include`, and `"types": ["node","vite/client"]` does not auto-pull Express ambients. When the Vercel Node builder typechecks the function with degraded Express typings, `Request`/`Response` collapse and **TS2339** appears on `req.body` / `res.status` even if the overall build exits 0.
+
+Mitigations on this branch:
+- `api/` added to root `include`
+- `api/tsconfig.json` with explicit `typeRoots` → `../node_modules/@types` (Vercel finds this before root when compiling `api/stripe/*`)
+- Vercel entry exports `RequestHandler` (Express app)
+- Handler uses `ExpressRequest` / `ExpressResponse` aliases (avoid Node 24 Fetch globals)
+- `@types/express` moved to **dependencies** so qualify/prod installs still resolve Express members
+
+Do **not** treat `skipLibCheck` alone as the fix.

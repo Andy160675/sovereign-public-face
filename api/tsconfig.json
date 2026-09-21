@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "typeRoots": ["../node_modules/@types"],
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["client/src/*"],
+      "@shared/*": ["shared/*"]
+    }
+  },
+  "include": [
+    "./**/*.ts",
+    "../server/createStripeWebhookApp.ts",
+    "../server/stripe-webhook.ts",
+    "../server/stripe-receipt-store.ts"
+  ],
+  "exclude": ["../node_modules", "../dist", "**/*.test.ts"]
+}
