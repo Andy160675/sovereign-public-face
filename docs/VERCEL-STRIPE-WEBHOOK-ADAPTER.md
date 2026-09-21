@@ -58,6 +58,13 @@ to that digest.
 | Vercel project create/link/env/deploy | **Codex alone** |
 | Merge to main / Stage 5 | HELD until Stage 4 QUALIFY GREEN |
 
+## Live raw-body / bodyParser proof (H2 — QUALIFY / Codex)
+
+Source sets `config.api.bodyParser = false` and registers raw body before JSON.
+**Forge did not hit the bound host.** Live proof that the Vercel platform honours
+signed bytes on `https://sovereign-public-face.vercel.app/api/stripe/webhook`
+remains **Codex / QUALIFY after Stage4 env inject** — not closed by this draft seat.
+
 ## Local acceptance (no live Stripe)
 
 ```bash

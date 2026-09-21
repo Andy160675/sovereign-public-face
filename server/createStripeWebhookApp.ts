@@ -21,9 +21,9 @@ export type CreateStripeWebhookAppOptions = {
   /** Injectable Stripe webhook options (tests / journal injection). */
   stripe?: StripeWebhookOptions;
   /**
-   * When true (default for Vercel entry), only the webhook route is registered.
-   * Full long-running servers attach JSON/OAuth/tRPC themselves after this factory
-   * or use createFullHttpApp in _core/index.
+   * When true (Vercel / adapter tests), only the webhook route is registered and
+   * this factory must not mount express.json, tRPC, OAuth, or checkout.
+   * When false/omitted (long-running _core), callers attach those after return.
    */
   webhookOnly?: boolean;
 };
@@ -38,6 +38,15 @@ export function createStripeWebhookApp(
   const app = express();
   // Raw-body route MUST be registered before any global JSON parser.
   registerStripeWebhook(app, options.stripe);
+
+  if (options.webhookOnly === true) {
+    // Serverless / adapter surface: never mount extras on this app.
+    // Vercel entry (api/stripe/webhook.ts) passes webhookOnly: true explicitly.
+    return app;
+  }
+
+  // Long-running hosts (_core/index.ts) attach JSON/OAuth/tRPC after return.
+  // This factory still never mounts those itself — webhook-first only.
   return app;
 }
 
