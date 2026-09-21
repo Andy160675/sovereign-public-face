@@ -1,0 +1,17 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: stripe-receipt-mysql-test
+    environment:
+      MYSQL_ROOT_PASSWORD: forge_test_root_not_prod
+      MYSQL_DATABASE: stripe_receipts_test
+      MYSQL_USER: stripe_test
+      MYSQL_PASSWORD: forge_test_user_not_prod
+    ports:
+      - "3307:3306"
+    command: ["--innodb-lock-wait-timeout=5"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ustripe_test", "-pforge_test_user_not_prod"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
