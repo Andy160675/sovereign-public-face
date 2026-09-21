@@ -8,7 +8,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MysqlReceiptJournal, recordHash, type RecordedEvent } from "./stripe-receipt-store";
 
 const require = createRequire(import.meta.url);
-const { GENESIS_HASH } = require("@codex-sovereign/jarus") as { GENESIS_HASH: string };
+function loadGenesis(): string {
+  const path = process.env.JARUS_RECEIPT_ENGINE_PATH;
+  if (!path) throw new Error("JARUS_RECEIPT_ENGINE_PATH required");
+  const mod = require(path) as { GENESIS_HASH: string };
+  if (!mod.GENESIS_HASH) throw new Error("GENESIS_HASH missing from ReceiptEngine entry");
+  return mod.GENESIS_HASH;
+}
 
 const URI =
   process.env.STRIPE_RECEIPT_MYSQL_URI ??
@@ -26,7 +32,7 @@ async function seedConnector(uri: string, connector: string) {
     await db.execute("DELETE FROM stripe_receipt_connectors WHERE connector_id = ?", [connector]);
     await db.execute(
       "INSERT INTO stripe_receipt_connectors (connector_id, state, chain_length, head_hash) VALUES (?, 'ACTIVE', 0, ?)",
-      [connector, GENESIS_HASH],
+      [connector, loadGenesis()],
     );
     await db.commit();
   } catch (error) {
@@ -38,7 +44,12 @@ async function seedConnector(uri: string, connector: string) {
   }
 }
 
-describe("MysqlReceiptJournal durability (non-prod)", () => {
+const runMysqlDurability = Boolean(
+  process.env.STRIPE_RECEIPT_MYSQL_URI &&
+  process.env.JARUS_RECEIPT_ENGINE_PATH &&
+  process.env.JARUS_RECEIPT_ENGINE_SHA256,
+);
+describe.skipIf(!runMysqlDurability)("MysqlReceiptJournal durability (non-prod)", () => {
   let journal: MysqlReceiptJournal;
 
   beforeAll(async () => {
