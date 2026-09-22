@@ -12,7 +12,7 @@
  * req.body / res.status when Express typings failed to resolve.
  */
 import type { RequestHandler } from "express";
-import { createStripeWebhookApp } from "../../server/createStripeWebhookApp";
+import { createStripeWebhookApp } from "../../server/createStripeWebhookApp.js";
 
 // Disable Vercel/Node platform JSON parsing — Stripe signature needs raw bytes.
 export const config = {

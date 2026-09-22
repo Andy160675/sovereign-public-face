@@ -9,7 +9,7 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
-    "test": "pnpm run verify:public-client && vitest run",
+    "test": "pnpm run verify:public-client && node scripts/test-stripe-webhook-runtime.mjs && vitest run",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "test:ci": "node scripts/ci-with-jarus-pin.mjs",
     "verify:public-client": "node scripts/verify-public-client-boundary.mjs",

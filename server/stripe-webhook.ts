@@ -26,7 +26,7 @@ import {
   sha256Bytes,
   type ReceiptJournal,
   type RecordedEvent,
-} from "./stripe-receipt-store";
+} from "./stripe-receipt-store.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2026-02-25.clover",

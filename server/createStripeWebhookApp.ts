@@ -15,7 +15,7 @@ import express, { type Express } from "express";
 import {
   registerStripeWebhook,
   type StripeWebhookOptions,
-} from "./stripe-webhook";
+} from "./stripe-webhook.js";
 
 export type CreateStripeWebhookAppOptions = {
   /** Injectable Stripe webhook options (tests / journal injection). */

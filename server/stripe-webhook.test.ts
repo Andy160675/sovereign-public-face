@@ -358,3 +358,140 @@ describe("corrected acceptance cases", () => {
     });
   });
 });
+
+describe("signed payment and refund event observations (RECORDED_ONLY)", () => {
+  // These are signed provider-shaped observations, not a payment/refund ledger.
+  // In particular, charge.refunded carries the original charge amount; this
+  // handler does not derive a refund delta or assert that a refund succeeded.
+  it.each([
+    {
+      label: "successful PaymentIntent",
+      type: "payment_intent.succeeded",
+      object: {
+        id: "pi_matrix", object: "payment_intent", amount: 1500,
+        amount_received: 1500, currency: "gbp", status: "succeeded",
+        latest_charge: "ch_matrix",
+      },
+      observedAmount: 1500,
+    },
+    {
+      label: "successful Charge",
+      type: "charge.succeeded",
+      object: {
+        id: "ch_matrix", object: "charge", amount: 1500,
+        amount_captured: 1500, amount_refunded: 0, currency: "gbp",
+        payment_intent: "pi_matrix", paid: true, refunded: false,
+      },
+      observedAmount: 1500,
+    },
+    {
+      label: "partially refunded Charge (original amount observed, no refund delta)",
+      type: "charge.refunded",
+      object: {
+        id: "ch_matrix", object: "charge", amount: 1500,
+        amount_captured: 1500, amount_refunded: 500, currency: "gbp",
+        payment_intent: "pi_matrix", paid: true, refunded: false,
+        refunds: {
+          object: "list", has_more: false, url: "/v1/charges/ch_matrix/refunds",
+          data: [{
+            id: "re_matrix", object: "refund", amount: 500, currency: "gbp",
+            charge: "ch_matrix", payment_intent: "pi_matrix", status: "succeeded",
+          }],
+        },
+      },
+      observedAmount: 1500,
+    },
+    {
+      label: "created pending Refund",
+      type: "refund.created",
+      object: {
+        id: "re_matrix", object: "refund", amount: 500, currency: "gbp",
+        charge: "ch_matrix", payment_intent: "pi_matrix", status: "pending",
+      },
+      observedAmount: 500,
+    },
+    {
+      label: "updated succeeded Refund",
+      type: "refund.updated",
+      object: {
+        id: "re_matrix", object: "refund", amount: 500, currency: "gbp",
+        charge: "ch_matrix", payment_intent: "pi_matrix", status: "succeeded",
+      },
+      observedAmount: 500,
+    },
+    {
+      label: "failed Refund",
+      type: "refund.failed",
+      object: {
+        id: "re_matrix", object: "refund", amount: 500, currency: "gbp",
+        charge: "ch_matrix", payment_intent: "pi_matrix", status: "failed",
+        failure_reason: "lost_or_stolen_card",
+      },
+      observedAmount: 500,
+    },
+  ])("records $label without a paid or entitlement claim", async ({ type, object, observedAmount }) => {
+    const value = event("evt_matrix", { type, data: { object } });
+    expect(await post(value)).toEqual({
+      status: 200,
+      body: { received: true, disposition: "recorded" },
+    });
+    expect(journal.chain.map((receipt) => receipt.kind)).toEqual([
+      "stripe.delivery", "stripe.signature", "stripe.classification", "stripe.execution",
+    ]);
+    expect(journal.chain.find((receipt) => receipt.kind === "stripe.signature")!.payload)
+      .toMatchObject({ verified: true, event_id: "evt_matrix" });
+    expect(journal.chain.find((receipt) => receipt.kind === "stripe.classification")!.payload)
+      .toMatchObject({
+        event_id: "evt_matrix", event_type: type,
+        observed_amount: observedAmount, observed_currency: "gbp",
+        expected_amount: null, expected_amount_match: null,
+        scope_decision: "record", permitted_operation: "record",
+      });
+    expect(journal.chain.at(-1)!.payload).toMatchObject({
+      event_id: "evt_matrix", operation: "record", result: "RECORDED_ONLY",
+      provisioned: false, paid_claim: false, entitlement_granted: false,
+    });
+    expect(journal.events.size).toBe(1);
+    expect(verifyChain(journal.chain).valid).toBe(true);
+  });
+
+  it("keeps distinct PaymentIntent and Charge events for one payment as separate record-only receipts", async () => {
+    const intent = event("evt_linked_intent", {
+      type: "payment_intent.succeeded",
+      data: { object: {
+        id: "pi_linked", object: "payment_intent", amount: 1500,
+        amount_received: 1500, currency: "gbp", status: "succeeded",
+        latest_charge: "ch_linked",
+      } },
+    });
+    const charge = event("evt_linked_charge", {
+      type: "charge.succeeded",
+      data: { object: {
+        id: "ch_linked", object: "charge", amount: 1500,
+        amount_captured: 1500, amount_refunded: 0, currency: "gbp",
+        payment_intent: "pi_linked", paid: true, refunded: false,
+      } },
+    });
+
+    expect((await post(intent)).body).toEqual({ received: true, disposition: "recorded" });
+    expect((await post(charge)).body).toEqual({ received: true, disposition: "recorded" });
+    // Re-delivery of each event must not create a third record-only execution.
+    expect((await post(intent)).status).toBe(200);
+    expect((await post(charge)).status).toBe(200);
+    expect([...journal.events.keys()]).toEqual(["evt_linked_intent", "evt_linked_charge"]);
+    const executions = journal.chain.filter((receipt) => receipt.kind === "stripe.execution");
+    expect(executions.map((receipt) => receipt.payload)).toEqual([
+      expect.objectContaining({
+        event_id: "evt_linked_intent", idempotency_key: "stripe:unit:test:evt_linked_intent",
+        operation: "record", result: "RECORDED_ONLY",
+        provisioned: false, paid_claim: false, entitlement_granted: false,
+      }),
+      expect.objectContaining({
+        event_id: "evt_linked_charge", idempotency_key: "stripe:unit:test:evt_linked_charge",
+        operation: "record", result: "RECORDED_ONLY",
+        provisioned: false, paid_claim: false, entitlement_granted: false,
+      }),
+    ]);
+    expect(verifyChain(journal.chain).valid).toBe(true);
+  });
+});
