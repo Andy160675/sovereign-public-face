@@ -17,7 +17,10 @@ function equal(a, b) {
   return x.length === y.length && timingSafeEqual(x, y);
 }
 const words = text => text.trim().split(/\s+/u).filter(Boolean).length;
-const identifiers = text => new Set(text.match(/\d+(?:[.,:]\d+)*(?:%|\b)/g) ?? []);
+// Every number counts as a fact, including ones glued to letters ("5pm", "2nd").
+// am/pm stays part of the fact so "5pm" -> "7pm" or "5am" is caught; spacing and dots are normalised.
+const identifiers = text => new Set((text.match(/\d+(?:[.,:]\d+)*(?:%|\s?[ap]\.?m\.?(?![a-z]))?/giu) ?? [])
+  .map(m => m.toLowerCase().replace(/\s?([ap])\.?m\.?$/u, '$1m')));
 function currencyFacts(text) {
   // Bind each visible currency marker to its amount. Models must never infer a
   // missing marker, even when both worker and checker agree with the inference.

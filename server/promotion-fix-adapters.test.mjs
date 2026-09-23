@@ -159,6 +159,10 @@ test('Stripe always creates the fixed £15 GBP product regardless of order price
   assert.equal(form.get('metadata[order_id]'), order.id);
   assert.equal(form.get('metadata[product]'), 'promotion_fix_v1');
   assert.equal(form.get('client_reference_id'), order.id);
+  assert.equal(form.get('payment_intent_data[metadata][order_id]'), order.id);
+  assert.equal(form.get('payment_intent_data[metadata][product]'), 'promotion_fix_v1');
+  // Payment methods (card, Apple Pay, PayPal) are chosen in the Stripe Dashboard; listing them here would silently drop the rest.
+  assert.ok(![...form.keys()].some(key => /^payment_method_(?:types|configuration)/.test(key)));
   assert.equal(form.get('success_url'), 'https://example.test/success');
   assert.equal(form.get('cancel_url'), 'https://example.test/cancel');
 });

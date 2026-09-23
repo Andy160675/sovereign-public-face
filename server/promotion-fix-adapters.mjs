@@ -255,6 +255,9 @@ export function createStripeClient(env, fetchImpl = fetch) {
         client_reference_id: order.id,
         'metadata[order_id]': order.id,
         'metadata[product]': 'promotion_fix_v1',
+        // Copied onto the payment itself so a charge can be found by order reference in the Dashboard (refunds).
+        'payment_intent_data[metadata][order_id]': order.id,
+        'payment_intent_data[metadata][product]': 'promotion_fix_v1',
         'line_items[0][quantity]': '1',
         'line_items[0][price_data][currency]': 'gbp',
         'line_items[0][price_data][unit_amount]': '1500',
