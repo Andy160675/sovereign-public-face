@@ -31,6 +31,27 @@ test('an unconfirmed source is rejected before model or payment',async()=>{const
 test('unpaid and fabricated return query cannot unlock output',async()=>{const f=setup();const o=await f.service.prepare(f.input,f.context);await f.service.checkout(o);const r=await f.service.result({...o,sessionId:'cs_test_'+o.orderId});assert.equal(r.status,'READY_UNPAID');assert.equal('result' in r,false);await assert.rejects(f.service.result({...o,sessionId:'cs_fake'}),e=>e.status===400);});
 test('wrong token cannot read or create checkout',async()=>{const f=setup();const o=await f.service.prepare(f.input,f.context);await assert.rejects(f.service.result({...o,accessToken:'x'.repeat(43)}),e=>e.status===404);await assert.rejects(f.service.checkout({...o,accessToken:'x'.repeat(43)}),e=>e.status===404);});
 test('verified exact paid session unlocks once and supports redelivery',async()=>{const f=setup();const o=await f.service.prepare(f.input,f.context);await f.service.checkout(o);f.paid();const a=await f.service.result(o),b=await f.service.result(o);assert.equal(a.status,'PAID');assert.equal(a.paymentKind,'STRIPE');assert.deepEqual(a.result,b.result);assert.deepEqual(a.receipt,b.receipt);assert.equal(f.counts().checkouts,1);});
+test('paid session reconciles from a trusted callback without a browser return or access token',async()=>{
+  const f=setup();const o=await f.service.prepare(f.input,f.context);await f.service.checkout(o);f.paid();
+  const summary=await f.service.reconcileSession({orderId:o.orderId,sessionId:'cs_test_'+o.orderId});
+  assert.equal(summary.status,'PAID');assert.equal(summary.orderId,o.orderId);
+  assert.equal('result' in summary,false);assert.equal('accessToken' in summary,false);
+  assert.equal(f.orders.get(o.orderId).payment_kind,'STRIPE');
+  const repeated=await f.service.reconcileSession({orderId:o.orderId,sessionId:'cs_test_'+o.orderId});
+  assert.deepEqual(repeated,summary);
+  assert.deepEqual((await f.service.result(o)).result.text,'Lunch is £15 this Friday.');
+  assert.deepEqual(f.counts(),{generated:1,checked:1,checkouts:1});
+});
+test('callback cannot unlock an unpaid, mismatched, or unavailable Stripe session',async()=>{
+  const f=setup();const o=await f.service.prepare(f.input,f.context);await f.service.checkout(o);
+  const callback={orderId:o.orderId,sessionId:'cs_test_'+o.orderId};
+  await assert.rejects(f.service.reconcileSession(callback),e=>e.code==='PAYMENT_PENDING');
+  await assert.rejects(f.service.reconcileSession({...callback,sessionId:'cs_test_wrong'}),e=>e.code==='PAYMENT_MISMATCH');
+  assert.equal(f.orders.get(o.orderId).status,'READY_UNPAID');
+  f.outage();
+  await assert.rejects(f.service.reconcileSession(callback));
+  assert.equal(f.orders.get(o.orderId).status,'READY_UNPAID');
+});
 for(const [name,override] of Object.entries({amount:{amount_total:1},currency:{currency:'usd'},order:{metadata:{order_id:'wrong',product:'promotion_fix_v1'}},mode:{livemode:true}}))test('paid session with wrong '+name+' does not unlock',async()=>{const f=setup({stripeOverride:override});const o=await f.service.prepare(f.input,f.context);await f.service.checkout(o);f.paid();await assert.rejects(f.service.result(o),e=>e.code==='PAYMENT_MISMATCH');assert.equal(f.orders.get(o.orderId).status,'READY_UNPAID');});
 test('preview simulation requires its separate secret and is visibly synthetic',async()=>{const f=setup();const o=await f.service.prepare(f.input,{...f.context,rehearsalKey:f.env.PROMOTION_REHEARSAL_KEY});await assert.rejects(f.service.simulate(o,'wrong'),e=>e.status===404);const r=await f.service.simulate(o,f.env.PROMOTION_REHEARSAL_KEY);assert.equal(r.status,'PAID');assert.equal(r.paymentKind,'SYNTHETIC_TEST');assert.equal(r.receipt.cashReceived,false);});
 test('protected rehearsal preparation never creates a Stripe checkout',async()=>{const f=setup();const o=await f.service.prepare(f.input,{...f.context,rehearsalKey:f.env.PROMOTION_REHEARSAL_KEY});assert.equal(f.counts().checkouts,0);assert.equal(o.checkoutUrl,null);await assert.rejects(f.service.checkout(o),e=>e.code==='REHEARSAL_ONLY');});

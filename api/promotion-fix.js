@@ -1,5 +1,6 @@
 import { createPromotionService, fault } from '../server/promotion-fix-service.mjs';
 import { createNeonStore, createAnthropicModel, createStripeClient } from '../server/promotion-fix-adapters.mjs';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 const LIMIT = 12000;
 async function jsonBody(req) {
@@ -56,3 +57,52 @@ export function createHandler({service,env=process.env}={}) {
 }
 
 export default createHandler();
+
+export function createWebhookHandler({service,env=process.env,now=()=>new Date()}={}) {
+  let liveService=service;
+  return async function handler(req,res) {
+    res.setHeader('Cache-Control','no-store');
+    res.setHeader('Content-Type','application/json; charset=utf-8');
+    try {
+      if (req.method!=='POST') throw fault(405,'METHOD_NOT_ALLOWED','Use POST.');
+      const secret=env.PROMOTION_WEBHOOK_SECRET;
+      if (typeof secret!=='string' || !/^whsec_[A-Za-z0-9_]{16,}$/.test(secret)) throw fault(503,'WEBHOOK_NOT_CONFIGURED','Webhook is not configured.');
+      const signature=req.headers['stripe-signature'];
+      if (typeof signature!=='string' || signature.length>512) throw fault(400,'INVALID_SIGNATURE','Invalid signature.');
+      let raw;
+      if (Buffer.isBuffer(req.body)) raw=req.body;
+      else if (req.body===undefined) {
+        const chunks=[];let size=0;
+        for await (const chunk of req) {
+          size+=chunk.length;
+          if(size>65536) throw fault(413,'INPUT_TOO_LARGE','The request is too large.');
+          chunks.push(Buffer.from(chunk));
+        }
+        raw=Buffer.concat(chunks);
+      } else throw fault(400,'INVALID_BODY','Raw body required.');
+      if (raw.length>65536) throw fault(413,'INPUT_TOO_LARGE','The request is too large.');
+      const parts=signature.split(',').map(p=>p.trim().split('='));
+      const timestamp=parts.find(([key])=>key==='t')?.[1];
+      const values=parts.filter(([key])=>key==='v1').map(([,value])=>value);
+      const seconds=Number(timestamp);
+      if (!/^\d{10,}$/.test(timestamp??'') || !Number.isSafeInteger(seconds) ||
+          Math.abs(Math.floor(now().getTime()/1000)-seconds)>300 || !values.length) throw fault(400,'INVALID_SIGNATURE','Invalid signature.');
+      const expected=createHmac('sha256',secret).update(String(seconds)).update('.').update(raw).digest();
+      if (!values.some(value=>/^[0-9a-f]{64}$/i.test(value) && timingSafeEqual(expected,Buffer.from(value,'hex')))) throw fault(400,'INVALID_SIGNATURE','Invalid signature.');
+      let event;
+      try { event=JSON.parse(raw.toString('utf8')); } catch { throw fault(400,'INVALID_JSON','Invalid event.'); }
+      if (event?.type==='checkout.session.completed' || event?.type==='checkout.session.async_payment_succeeded') {
+        const session=event.data?.object;
+        if (session?.metadata?.product==='promotion_fix_v1') {
+          if (!liveService) liveService=createPromotionService({store:createNeonStore(env),model:null,stripe:createStripeClient(env),env});
+          await liveService.reconcileSession({orderId:session.metadata.order_id,sessionId:session.id});
+        }
+      }
+      res.statusCode=200;res.end(JSON.stringify({received:true}));
+    } catch(error) {
+      const status=error.status===400 || error.status===405 || error.status===413 ? error.status:503;
+      res.statusCode=status;
+      res.end(JSON.stringify({error:{code:status===503?'WEBHOOK_UNAVAILABLE':'INVALID_WEBHOOK'}}));
+    }
+  };
+}
