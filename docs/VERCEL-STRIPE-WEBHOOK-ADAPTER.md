@@ -1,6 +1,6 @@
 # Vercel Stripe webhook adapter (Stage 4 PREPARE)
 
-**scope:** source adapter only. Codex owns Vercel project create/link/settings/env/deploy.  
+**scope:** source adapter only. Codex owns Vercel project create/link/settings/env/deploy.
 **surface:** `POST /api/stripe/webhook` — **RECORDED_ONLY**. Check 3 business effect **HELD**.
 
 ## Bound host TARGET (t727u — G1 CLOSED; docs only — no Vercel mutate here)
