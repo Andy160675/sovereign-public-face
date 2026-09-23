@@ -13,7 +13,7 @@ function setup(options={}) {
     async markPaid(id,kind,receipt){const o=orders.get(id); if(o.status!=='PAID'){o.status='PAID';o.payment_kind=kind;o.payment_receipt=receipt;o.paid_at=receipt.paidAt;} return structuredClone(o);},
   };
   const model={
-    async generate(){generated++;return {data:{eligible:true,text:'Lunch is £15 this Friday.',changes:['Made the offer clearer.'],human:['No personal data added.'],environment:['No environmental claim supplied.']},usage:{provider:'fixture',inputTokens:12,outputTokens:20}};},
+    async generate(){generated++;return {data:{eligible:true,text:options.text??'Lunch is £15 this Friday.',changes:['Made the offer clearer.'],human:['No personal data added.'],environment:['No environmental claim supplied.']},usage:{provider:'fixture',inputTokens:12,outputTokens:20}};},
     async check(){checked++;return {data:{accepted:options.accepted??true,eligible:true,notes:['Price and date retained.'],human:['Customer reviews before publication.'],environment:['No environmental claim added.']},usage:{provider:'fixture',inputTokens:15,outputTokens:20}};},
   };
   let paid=false, unavailable=false, retrieves=0;
@@ -38,3 +38,19 @@ test('production rejects simulation even with correct secret',async()=>{const f=
 test('shared rate counter rejects eleventh preparation before model call',async()=>{const f=setup();for(let i=0;i<10;i++)await f.service.prepare(f.input,f.context);await assert.rejects(f.service.prepare(f.input,f.context),e=>e.status===429);assert.equal(f.counts().generated,10);});
 
 test('verified paid redelivery survives Stripe outage but rejects a forged session',async()=>{const f=setup();const o=await f.service.prepare(f.input,f.context);await f.service.checkout(o);f.paid();const first=await f.service.result(o);f.outage();const repeated=await f.service.result(o);assert.deepEqual(repeated,first);assert.equal(f.retrieves(),1);await assert.rejects(f.service.result({...o,sessionId:'cs_forged'}),e=>e.code==='SESSION_MISMATCH');});
+
+for (const [name, source, revised] of [
+  ['guessed currency', 'Coffee and cake ?6 on Friday.', 'Coffee and cake £6 on Friday.'],
+  ['removed currency', 'Coffee and cake £6 on Friday.', 'Coffee and cake 6 on Friday.'],
+  ['changed currency', 'Coffee and cake £6 on Friday.', 'Coffee and cake €6 on Friday.'],
+  ['currency moved to another amount', 'Coffee £6 and cake €8.', 'Coffee €6 and cake £8.'],
+]) test('independent approval cannot bypass '+name, async()=>{
+  const f=setup({text:revised});
+  await assert.rejects(f.service.prepare({...f.input,promotion:source},f.context),e=>e.code==='CHECK_FAILED');
+  assert.equal(f.counts().checkouts,0);assert.equal(f.orders.size,0);
+});
+test('currency and amount preserved in a checked draft are accepted',async()=>{
+  const f=setup({text:'Coffee and cake £6 on Friday.'});
+  const o=await f.service.prepare({...f.input,promotion:'Coffee and cake £6 Friday.'},f.context);
+  assert.equal(o.status,'READY_UNPAID');assert.equal(f.counts().checkouts,0);
+});

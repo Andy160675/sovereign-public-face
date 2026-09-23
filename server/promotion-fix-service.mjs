@@ -18,6 +18,16 @@ function equal(a, b) {
 }
 const words = text => text.trim().split(/\s+/u).filter(Boolean).length;
 const identifiers = text => new Set(text.match(/\d+(?:[.,:]\d+)*(?:%|\b)/g) ?? []);
+function currencyFacts(text) {
+  // Bind each visible currency marker to its amount. Models must never infer a
+  // missing marker, even when both worker and checker agree with the inference.
+  const pattern = /(\p{Sc}|\b(?:GBP|EUR|USD))\s*(\d+(?:[.,]\d+)*)|(\d+(?:[.,]\d+)*)\s*(\p{Sc}|(?:GBP|EUR|USD)\b)/giu;
+  const symbols = {GBP:'£',EUR:'€',USD:'$'};
+  return [...text.matchAll(pattern)].map(match => {
+    const marker=(match[1]??match[4]).toUpperCase();
+    return `${symbols[marker]??marker}:${match[2]??match[3]}`;
+  }).sort();
+}
 function strings(value, min = 1) {
   return Array.isArray(value) && value.length >= min && value.length <= 8 && value.every(v => typeof v === 'string' && v.trim().length > 0 && v.length <= 600);
 }
@@ -35,6 +45,7 @@ function inspectDraft(input, worker, checker) {
   if (w?.eligible !== true || c?.eligible !== true || c?.accepted !== true || typeof w.text !== 'string' || !w.text.trim() || w.text.length > 4000 || words(w.text) > 150 || !strings(w.changes) || !strings(w.human) || !strings(w.environment) || !strings(c.notes) || !strings(c.human) || !strings(c.environment)) fail(422, 'CHECK_FAILED', 'The independent check did not approve this draft. No checkout or charge was created.');
   const original = identifiers(input.promotion), revised = identifiers(w.text);
   if (original.size !== revised.size || [...original].some(n => !revised.has(n))) fail(422, 'CHECK_FAILED', 'The draft changed a numeric fact. No checkout or charge was created.');
+  if (canonical(currencyFacts(input.promotion)) !== canonical(currencyFacts(w.text))) fail(422, 'CHECK_FAILED', 'The draft changed a currency fact. No checkout or charge was created.');
   return {
     text:w.text.trim(), changes:w.changes,
     flags:{human:[...new Set([...w.human,...c.human])],environment:[...new Set([...w.environment,...c.environment])]},
