@@ -54,3 +54,19 @@ test('currency and amount preserved in a checked draft are accepted',async()=>{
   const o=await f.service.prepare({...f.input,promotion:'Coffee and cake £6 Friday.'},f.context);
   assert.equal(o.status,'READY_UNPAID');assert.equal(f.counts().checkouts,0);
 });
+
+for (const [name, source, revised] of [
+  ['changed time', 'Happy hour from 5pm on Friday.', 'Happy hour from 7pm on Friday.'],
+  ['am/pm flipped', 'Brunch from 11am on Sunday.', 'Brunch from 11pm on Sunday.'],
+  ['dropped time', 'Tapas from 6pm, drinks £4.', 'Tapas all evening, drinks £4.'],
+  ['changed glued number', 'Book the 2nd table for 4.', 'Book the 3rd table for 4.'],
+]) test('code check rejects '+name, async()=>{
+  const f=setup({text:revised});
+  await assert.rejects(f.service.prepare({...f.input,promotion:source},f.context),e=>e.code==='CHECK_FAILED');
+  assert.equal(f.counts().checkouts,0);assert.equal(f.orders.size,0);
+});
+test('time written differently but unchanged is accepted',async()=>{
+  const f=setup({text:'Happy hour from 5 p.m. on Friday.'});
+  const o=await f.service.prepare({...f.input,promotion:'Happy hour 5pm Friday.'},f.context);
+  assert.equal(o.status,'READY_UNPAID');
+});
