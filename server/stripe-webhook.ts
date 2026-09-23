@@ -28,10 +28,6 @@ import {
   type RecordedEvent,
 } from "./stripe-receipt-store.js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-02-25.clover",
-});
-
 export type ExpectedAmount =
   | { amount: number; currency: string; source: string }
   | null
@@ -200,6 +196,29 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
       }
 
       // ── 2. SIGNATURE verify (SDK retains timestamp/replay protection) ───
+      // Construct the SDK only when a signed request reaches verification.
+      // Importing the module or serving unrelated routes must not require a payment key.
+      const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeSecretKey) {
+        try {
+          await journal.transact(connectorId, async (tx) => {
+            await tx.append("stripe.safe", {
+              trigger: "missing_stripe_secret_key",
+              delivery_id: deliveryId,
+              tier: "connector",
+              scope: connectorId,
+              grants_affected: [],
+              notification_sent: false,
+            });
+          });
+        } catch {
+          return res.status(500).json({ error: "Receipt storage fault" });
+        }
+        return res.status(503).json({ error: "Stripe configuration unavailable" });
+      }
+      const stripe = new Stripe(stripeSecretKey, {
+        apiVersion: "2026-02-25.clover",
+      });
       let event: Stripe.Event;
       try {
         event = stripe.webhooks.constructEvent(rawBody, sig, secret);
