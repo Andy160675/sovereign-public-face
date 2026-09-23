@@ -13,6 +13,10 @@
     "api/promotion-fix.js": {
       "memory": 256,
       "maxDuration": 60
+    },
+    "api/promotion-fix-webhook.js": {
+      "memory": 256,
+      "maxDuration": 30
     }
   },
   "rewrites": [

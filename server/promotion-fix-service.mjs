@@ -161,6 +161,29 @@ export function createPromotionService({store, model, stripe, env=process.env, n
     if (order.payment_kind !== 'STRIPE') fail(409,'PAYMENT_MISMATCH','This order has a different payment evidence type.');
     return delivered(order);
   }
+  async function reconcileSession({orderId,sessionId}={}) {
+    if (typeof orderId !== 'string' || !/^[0-9a-f-]{36}$/i.test(orderId) ||
+        typeof sessionId !== 'string' || !/^cs_(?:test|live)_[A-Za-z0-9_-]{1,240}$/.test(sessionId)) {
+      fail(400,'INVALID_SESSION','Invalid checkout session.');
+    }
+    let order=await store.get(orderId);
+    if (!order) fail(404,'ORDER_NOT_FOUND','Order not found.');
+    if (order.verification?.rehearsalOnly || order.checkout_session_id !== sessionId ||
+        hash(canonical(order.result)) !== order.result_hash) {
+      fail(409,'PAYMENT_MISMATCH','Payment details do not match this order.');
+    }
+    if (order.status !== 'PAID') {
+      const session=await stripe.retrieve(sessionId);
+      verifySession(order,session);
+      if (session.payment_status !== 'paid' || session.status !== 'complete') {
+        fail(409,'PAYMENT_PENDING','Payment is not confirmed.');
+      }
+      order=await store.markPaid(order.id,'STRIPE',receiptFor(order,'STRIPE',session));
+    }
+    if (order?.payment_kind !== 'STRIPE') fail(409,'PAYMENT_MISMATCH','Payment evidence does not match this order.');
+    const verified=delivered(order);
+    return {orderId:order.id,status:'PAID',paymentKind:'STRIPE',receiptHash:verified.receipt.receiptHash};
+  }
   async function simulate(value, suppliedKey) {
     requireRehearsalKey(suppliedKey);
     const order = await authenticate(value);
@@ -172,5 +195,5 @@ export function createPromotionService({store, model, stripe, env=process.env, n
     if (stored.payment_kind !== 'SYNTHETIC_TEST') fail(409,'PAYMENT_MISMATCH','Payment evidence changed.');
     return delivered(stored);
   }
-  return {prepare,checkout,result,simulate};
+  return {prepare,checkout,result,reconcileSession,simulate};
 }

@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { createHandler } from '../api/promotion-fix.js';
+import * as promotionApi from '../api/promotion-fix.js';
+import { createHmac } from 'node:crypto';
 
 async function hosted(env, service, run) {
   const server=createServer(createHandler({env,service}));
@@ -43,4 +45,38 @@ test('unexpected provider failure is sanitized at the native HTTP boundary',asyn
   await hosted(env,{async result(){throw Error('private-provider-value');}},async request=>{
     const response=await request({action:'result'});assert.equal(response.status,503);const body=await response.text();assert.ok(!body.includes('private-provider-value'));assert.equal(JSON.parse(body).error.code,'SERVICE_UNAVAILABLE');
   });
+});
+
+test('signed payment callback reconciles the matching order without a browser request',async()=>{
+  const timestamp=1_790_121_600;
+  const event=JSON.stringify({id:'evt_fixture',type:'checkout.session.completed',data:{object:{id:'cs_test_fixture',metadata:{order_id:'08e5206b-06bf-4b83-bf83-95c87c06854f',product:'promotion_fix_v1'}}}});
+  const secret='whsec_'+'s'.repeat(32);
+  const signature=createHmac('sha256',secret).update(`${timestamp}.${event}`).digest('hex');
+  const calls=[];
+  const handler=promotionApi.createWebhookHandler({env:{PROMOTION_WEBHOOK_SECRET:secret},now:()=>new Date(timestamp*1000),service:{async reconcileSession(value){calls.push(value);return {status:'PAID'};}}});
+  const server=createServer(handler);
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  try {
+    const base=`http://127.0.0.1:${server.address().port}`;
+    const request=(body,sig)=>fetch(base,{method:'POST',headers:{'stripe-signature':sig,'content-type':'application/json'},body});
+    assert.equal((await request(event,`t=${timestamp},v1=${signature}`)).status,200);
+    assert.deepEqual(calls,[{orderId:'08e5206b-06bf-4b83-bf83-95c87c06854f',sessionId:'cs_test_fixture'}]);
+    assert.equal((await request(event,`t=${timestamp},v1=${'0'.repeat(64)}`)).status,400);
+    const old=timestamp-600;
+    const oldSignature=createHmac('sha256',secret).update(`${old}.${event}`).digest('hex');
+    assert.equal((await request(event,`t=${old},v1=${oldSignature}`)).status,400);
+    assert.equal(calls.length,1);
+  } finally { await new Promise(resolve=>server.close(resolve)); }
+});
+test('webhook returns retryable failure when payment reconciliation fails',async()=>{
+  const timestamp=1_790_121_600,secret='whsec_'+'s'.repeat(32);
+  const event=JSON.stringify({type:'checkout.session.async_payment_succeeded',data:{object:{id:'cs_test_fixture',metadata:{order_id:'08e5206b-06bf-4b83-bf83-95c87c06854f',product:'promotion_fix_v1'}}}});
+  const signature=createHmac('sha256',secret).update(`${timestamp}.${event}`).digest('hex');
+  const server=createServer(promotionApi.createWebhookHandler({env:{PROMOTION_WEBHOOK_SECRET:secret},now:()=>new Date(timestamp*1000),service:{async reconcileSession(){throw Error('private-store-detail');}}}));
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  try {
+    const response=await fetch(`http://127.0.0.1:${server.address().port}`,{method:'POST',headers:{'stripe-signature':`t=${timestamp},v1=${signature}`},body:event});
+    assert.equal(response.status,503);
+    assert.doesNotMatch(await response.text(),/private-store-detail/);
+  } finally { await new Promise(resolve=>server.close(resolve)); }
 });
