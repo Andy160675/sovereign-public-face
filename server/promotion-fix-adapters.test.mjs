@@ -111,7 +111,11 @@ test('Anthropic forces distinct generation and verification tools with source an
     assert.equal(payload.max_tokens, 1200);
     assert.equal(payload.tool_choice.type, 'tool');
     assert.equal(payload.tool_choice.name, name);
-    assert.ok(payload.tools.some(tool => tool.name === name && tool.input_schema));
+    const tool=payload.tools.find(tool => tool.name === name);
+    assert.equal(tool.strict,true);
+    assert.ok(tool.input_schema);
+    assert.doesNotMatch(JSON.stringify(tool.input_schema), /"(?:minLength|maxLength|minItems|maxItems)"/);
+    for(const field of ['human','environment']) assert.equal(tool.input_schema.properties[field].type,'array');
     assert.ok(JSON.stringify(payload.messages).includes(source.promotion));
   }
   assert.ok(JSON.stringify(body(api.requests[1]).messages).includes(draft.text));
@@ -193,3 +197,12 @@ test('Stripe rejects a key that does not identify test or live mode', async () =
   await assert.rejects(async () => createStripeClient({ STRIPE_SECRET_KEY: 'invalid_UPSTREAM_SECRET_MARKER' }, api.fetch).retrieve('cs_test_fixture'), safeError(503));
   assert.equal(api.requests.length, 0);
 });
+
+for(const [operation,name,valid] of [['generate','submit_promotion',draft],['check','verify_promotion',checked]]) {
+  test('Anthropic rejects string-valued impact arrays from '+name,async()=>{
+    const malformed={...valid,human:'No added claim.]',environment:'No environmental claim.]'};
+    const api=transport(modelResponse(name,malformed));
+    const model=createAnthropicModel({ANTHROPIC_API_KEY:'sk-ant-fixture'},api.fetch);
+    await assert.rejects(model[operation](source,draft),safeError(502));
+  });
+}

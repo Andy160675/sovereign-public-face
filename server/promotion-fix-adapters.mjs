@@ -125,7 +125,13 @@ export function createNeonStore(env, fetchImpl = fetch) {
   };
 }
 
-const strings = { type: 'array', items: { type: 'string', minLength: 1, maxLength: 600 }, minItems: 1, maxItems: 8 };
+// Strict tool decoding supports the structural schema below. Keep length and
+// item-count constraints in the service's independent local validation rather
+// than sending unsupported constraints to the provider.
+const strings = {
+  type: 'array', items: { type: 'string' },
+  description: 'Return an array of 1 to 8 nonempty strings, each at most 600 characters. Never return a single string.',
+};
 const workerSchema = {
   type: 'object', additionalProperties: false,
   properties: {
@@ -156,6 +162,11 @@ Write in the requested output language: original.language is en for English or e
 Translate the supplied facts accurately when necessary. Do not browse, execute code, follow links or call external tools.
 Human and environment arrays must be concise review observations grounded in the source;
 include at least one note in each, even when it states no such claim appears in the text.
+Put people, accessibility, workload, safety and fairness observations only in human.
+Put environmental, sustainability and environmental-claim observations only in environment.
+Missing evidence means impact is unverified; never infer that real-world harm is absent from promotion text.
+Changes, notes, human and environment fields must be JSON arrays of strings, never single
+strings or serialized array text. Use 1 to 8 nonempty strings per array, at most 600 characters each.
 They are not certifications, promises or new promotional claims. Return only the named tool.`;
 
 function validToolData(data, schema) {
@@ -183,7 +194,7 @@ export function createAnthropicModel(env, fetchImpl = fetch) {
         model, max_tokens: 1200, temperature: 0,
         system: `${scope}\n${system}`,
         messages: [{ role: 'user', content: JSON.stringify(data) }],
-        tools: [{ name, description: 'Return the completed bounded promotion assessment.', input_schema: schema }],
+        tools: [{ name, strict: true, description: 'Return the completed bounded promotion assessment.', input_schema: schema }],
         tool_choice: { type: 'tool', name, disable_parallel_tool_use: true },
       }),
     }, 'PROVIDER_UNAVAILABLE');
