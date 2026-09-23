@@ -251,6 +251,7 @@ export function createStripeClient(env, fetchImpl = fetch) {
       }
       const body = new URLSearchParams({
         mode: 'payment',
+        'adaptive_pricing[enabled]': 'false',
         client_reference_id: order.id,
         'metadata[order_id]': order.id,
         'metadata[product]': 'promotion_fix_v1',

@@ -152,6 +152,7 @@ test('Stripe always creates the fixed £15 GBP product regardless of order price
   assert.equal(headers(request).get('Idempotency-Key'), order.id);
   assert.equal(form.get('mode'), 'payment');
   assert.equal(form.get('line_items[0][quantity]'), '1');
+  assert.equal(form.get('adaptive_pricing[enabled]'), 'false');
   assert.equal(form.get('line_items[0][price_data][unit_amount]'), '1500');
   assert.equal(form.get('line_items[0][price_data][currency]'), 'gbp');
   assert.equal(form.get('line_items[0][price_data][product_data][name]'), 'Promotion Fix');
