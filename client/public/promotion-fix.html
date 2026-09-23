@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="One promotion, a clearer rewrite, a note on the changes, and visible flags about people and the environment. English or Spanish. £15.">
+  <title>Promotion Fix — one promotion, made clearer</title>
+  <style>
+    :root { color-scheme: light; --ink:#17332d; --muted:#53665f; --paper:#f5f4ec; --card:#fffefa; --line:#cbd4c9; --green:#184c3e; --accent:#d9f28c; --error:#a32525; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.6 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button,input,select,textarea { font:inherit; }
+    a { color:var(--green); text-underline-offset:3px; }
+    a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible { outline:3px solid #3868ca; outline-offset:4px; }
+    [hidden] { display:none !important; }
+    .skip { position:absolute; left:1rem; top:-5rem; padding:.6rem 1rem; background:white; z-index:2; }
+    .skip:focus { top:1rem; }
+    .shell { width:min(1080px,calc(100% - 40px)); margin:auto; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:27px 0; border-bottom:1px solid var(--line); }
+    .brand { font-weight:760; letter-spacing:-.04em; font-size:1.25rem; }
+    .brand-mark { display:inline-grid; place-items:center; width:30px; height:30px; background:var(--green); color:var(--accent); border-radius:8px; margin-right:9px; font-size:1.15rem; }
+    .header-note { font-size:.8rem; color:var(--muted); }
+    main { padding:62px 0 50px; }
+    .layout { display:grid; grid-template-columns:.88fr 1.12fr; gap:62px; align-items:start; }
+    .eyebrow { margin:0 0 18px; font-size:.75rem; font-weight:760; text-transform:uppercase; letter-spacing:.12em; }
+    h1 { margin:0 0 23px; max-width:470px; font-size:clamp(2.8rem,5vw,4rem); line-height:1.06; letter-spacing:-.055em; font-weight:650; }
+    .intro { font-size:1.1rem; color:var(--muted); max-width:430px; }
+    .price { display:inline-flex; align-items:baseline; gap:11px; margin:15px 0 22px; }
+    .price strong { font-size:2.25rem; letter-spacing:-.04em; }
+    .price span { color:var(--muted); font-size:.9rem; }
+    .included { padding:0; margin:0 0 30px; list-style:none; }
+    .included li { padding:8px 0 8px 27px; position:relative; }
+    .included li::before { content:"✓"; position:absolute; left:0; color:var(--green); font-weight:700; }
+    .scope { border-top:1px solid var(--line); padding-top:18px; max-width:440px; color:var(--muted); font-size:.85rem; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:30px; box-shadow:0 10px 30px #193c2e05; }
+    h2 { margin:0 0 8px; font-size:1.4rem; line-height:1.25; letter-spacing:-.025em; }
+    h3 { margin:24px 0 8px; font-size:1rem; }
+    p { margin:0 0 16px; }
+    .muted,.help { color:var(--muted); }
+    .help { font-size:.8rem; }
+    label { display:block; font-weight:650; font-size:.9rem; margin:23px 0 7px; }
+    textarea,input[type="text"],select { display:block; width:100%; border:1px solid #9eaFA3; border-radius:9px; background:white; color:var(--ink); padding:12px; }
+    textarea { min-height:210px; resize:vertical; line-height:1.55; }
+    textarea[aria-invalid="true"] { border-color:var(--error); }
+    .field-meta { display:flex; justify-content:space-between; gap:15px; margin-top:7px; font-size:.78rem; color:var(--muted); }
+    .field-meta span:last-child { flex-shrink:0; }
+    .over-limit { color:var(--error); font-weight:700; }
+    .check { display:flex; align-items:flex-start; gap:11px; font-size:.85rem; font-weight:450; cursor:pointer; margin:22px 0; }
+    .check input { width:18px; height:18px; margin:3px 0 0; flex:0 0 18px; accent-color:var(--green); }
+    button,.button { display:inline-flex; align-items:center; justify-content:center; min-height:46px; gap:8px; border-radius:9px; border:1px solid var(--green); padding:11px 17px; cursor:pointer; text-decoration:none; font-weight:650; font-size:.9rem; }
+    button { background:var(--green); color:white; }
+    button:hover:not(:disabled) { background:#113d31; }
+    button:disabled { opacity:.55; cursor:wait; }
+    .full { width:100%; }
+    .secondary { color:var(--green); background:transparent; border-color:#b5c4b8; }
+    .secondary:hover:not(:disabled) { background:#eaf0e6; }
+    .text-button { padding:4px 0; background:transparent; color:var(--green); border:none; text-decoration:underline; font-weight:500; min-height:36px; }
+    .text-button:hover:not(:disabled) { background:transparent; color:#0c271e; }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; margin:20px 0 12px; }
+    .status { border:1px solid #becdbb; background:#edf3e6; border-radius:10px; padding:13px 15px; margin:0 0 19px; font-size:.88rem; overflow-wrap:anywhere; }
+    .status.error { border-color:#dca9a5; background:#fff0eb; color:#81291f; }
+    .pill { display:inline-block; border:1px solid #bbceb0; border-radius:40px; background:#e9f1e2; padding:3px 10px; font-weight:650; font-size:.72rem; margin:0 0 16px; }
+    .order-id { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; overflow-wrap:anywhere; font-size:.78rem; }
+    .recovery { padding:15px; background:#f2f4ed; border:1px solid #d7dfd1; border-radius:10px; margin-top:20px; }
+    .recovery p { margin-bottom:7px; }
+    .recovery .text-button { font-size:.85rem; }
+    .result-text { white-space:pre-wrap; overflow-wrap:anywhere; border-left:3px solid #a9c778; padding:4px 0 4px 17px; margin:20px 0; font-size:1.05rem; }
+    .result-list { padding-left:21px; margin:5px 0 18px; }
+    .result-list li { margin:7px 0; overflow-wrap:anywhere; }
+    .flag-box { background:#f4f5ee; border:1px solid #d5ded0; border-radius:10px; padding:15px; margin-top:12px; }
+    .flag-box h3 { margin:0 0 8px; }
+    .flag-box .result-list { margin-bottom:0; font-size:.86rem; }
+    .receipt { border-top:1px solid var(--line); margin-top:23px; padding-top:17px; }
+    .receipt p { margin:5px 0; font-size:.8rem; }
+    details { margin-top:22px; border-top:1px solid var(--line); padding-top:17px; }
+    summary { cursor:pointer; color:var(--green); font-size:.88rem; }
+    details label { margin-top:17px; }
+    footer { color:var(--muted); font-size:.78rem; padding:22px 0 34px; border-top:1px solid var(--line); }
+    .no-script { padding:15px; background:#fff0eb; border:1px solid #dca9a5; border-radius:10px; }
+    @media (max-width:800px) { main { padding-top:35px; } .layout { grid-template-columns:1fr; gap:28px; } .intro,h1,.scope { max-width:620px; } .included { margin-bottom:16px; } .price { margin-top:1px; margin-bottom:10px; } }
+    @media (max-width:440px) { .shell { width:calc(100% - 28px); } .card { padding:23px 18px; border-radius:15px; } .header-note { max-width:95px; text-align:right; } h1 { font-size:2.75rem; } .actions > button { flex:1 1 100%; } }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#promotion-form">Skip to your promotion</a>
+  <div class="shell">
+    <header>
+      <div class="brand"><span class="brand-mark" aria-hidden="true">↗</span>Promotion Fix</div>
+      <span class="header-note">One promotion. One clear price.</span>
+    </header>
+    <main>
+      <div class="layout">
+        <section aria-labelledby="page-heading">
+          <p class="eyebrow">A little clarity goes a long way</p>
+          <h1 id="page-heading">Make your promotion clearer.</h1>
+          <p class="intro">Bring the facts. Get an AI-assisted rewrite that helps people understand your offer.</p>
+          <div class="price"><strong>£15</strong><span>for one promotion · one payment</span></div>
+          <ul class="included">
+            <li>One rewrite in English or Spanish</li>
+            <li>A note explaining what changed</li>
+            <li>Visible flags about people and the environment</li>
+          </ul>
+          <p class="scope">For everyday, low-risk marketing. Up to 150 words. Use facts you can support; leave out personal or confidential information. Review the final wording before you publish it.</p>
+          <p class="help">This is a writing service. It does not verify your source facts or guarantee sales, income, or any other outcome.</p>
+        </section>
+        <section class="card" aria-label="Prepare and retrieve your promotion">
+          <noscript><style>#promotion-form,#recover-details{display:none}</style><p class="no-script">Enable JavaScript to prepare your promotion and securely retrieve the result after payment.</p></noscript>
+          <div id="status" class="status" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+          <form id="promotion-form">
+            <h2>Your offer, in your words</h2>
+            <p class="muted">Paste one promotion. Include the details that must stay accurate.</p>
+            <label for="promotion">Your promotion</label>
+            <textarea id="promotion" name="promotion" rows="8" maxlength="4000" required aria-describedby="promotion-help word-count" placeholder="Example: Our neighbourhood café is offering a coffee and a pastry for £6, Monday to Friday, 8–11am. Available in store until 30 November."></textarea>
+            <div class="field-meta"><span id="promotion-help">One promotion · maximum 150 words</span><span id="word-count">0 / 150 words</span></div>
+            <label for="language">Rewrite language</label>
+            <select id="language" name="language"><option value="en">English</option><option value="es">Español</option></select>
+            <label class="check" for="facts-confirmed"><input id="facts-confirmed" name="factsConfirmed" type="checkbox" required><span>I confirm the facts, prices, dates and claims are accurate and supported, and I have permission to use this text.</span></label>
+            <button id="prepare-button" class="full" type="submit">Prepare my rewrite — £15</button>
+            <p class="help" style="margin:10px 0 0;text-align:center">Payment comes next. This step does not charge you.</p>
+          </form>
+          <section id="order-panel" aria-labelledby="order-heading" hidden>
+            <span id="order-badge" class="pill">Awaiting payment</span>
+            <h2 id="order-heading">Your order is ready</h2>
+            <p id="order-description" class="muted">Continue to checkout to pay £15. Your rewrite will appear here after payment is confirmed.</p>
+            <p class="help">Order reference<br><span id="order-id" class="order-id"></span></p>
+            <div id="payment-actions" class="actions">
+              <button id="checkout-button" type="button">Continue to checkout — £15</button>
+              <button id="check-button" class="secondary" type="button">Check payment &amp; retrieve</button>
+            </div>
+            <div id="recovery-box" class="recovery">
+              <p><strong>Keep a way back to your order.</strong></p>
+              <p id="storage-note" class="help">Your recovery details are saved in this browser. Save a private recovery link to open the order on another device.</p>
+              <button id="copy-recovery" class="text-button" type="button">Copy private recovery link</button>
+              <p class="help">Anyone with this link can access your result. Keep it private.</p>
+            </div>
+            <button id="new-button" class="text-button" type="button" style="margin-top:16px">Start a different promotion</button>
+          </section>
+          <section id="result-panel" aria-labelledby="result-heading" hidden>
+            <h2 id="result-heading" style="margin-top:27px">Your revised promotion</h2>
+            <p id="result-text" class="result-text"></p>
+            <div class="actions">
+              <button id="copy-result" type="button">Copy rewrite</button>
+              <button id="download-result" class="secondary" type="button">Save result &amp; order record</button>
+            </div>
+            <h3>What changed</h3>
+            <ul id="changes-list" class="result-list"></ul>
+            <h3>Review notes</h3>
+            <ul id="check-notes" class="result-list"></ul>
+            <div class="flag-box"><h3>People: points to review</h3><ul id="human-flags" class="result-list"></ul></div>
+            <div class="flag-box"><h3>Environment: points to review</h3><ul id="environment-flags" class="result-list"></ul></div>
+            <p id="result-boundary" class="help" style="margin-top:14px"></p>
+            <div class="receipt"><p id="payment-record"></p><p class="help">Check the facts and the flagged points before using this wording.</p></div>
+          </section>
+          <details id="recover-details">
+            <summary>Already have a private recovery link?</summary>
+            <form id="recover-form">
+              <label for="recovery-input">Paste your private recovery link</label>
+              <input id="recovery-input" name="recoveryLink" type="text" autocomplete="off" spellcheck="false" required aria-describedby="recovery-help">
+              <p id="recovery-help" class="help" style="margin-top:7px">Use the link saved when you created the order.</p>
+              <button class="secondary" type="submit">Retrieve my order</button>
+            </form>
+          </details>
+        </section>
+      </div>
+    </main>
+    <footer>Promotion Fix · £15 per promotion · English / Español</footer>
+  </div>
+  <script>
+    'use strict';
+    (() => {
+      const API = '/api/promotion-fix';
+      const STORAGE_PREFIX = 'promotion-fix:order:';
+      const LAST_ORDER_KEY = 'promotion-fix:last-order';
+      const byId = id => document.getElementById(id);
+      const form = byId('promotion-form');
+      const promotion = byId('promotion');
+      const statusBox = byId('status');
+      let currentOrder = null;
+      let paidResult = null;
+      let busy = false;
+      let storedLocally = false;
+
+      function wordCount(value) { return value.trim() ? value.trim().split(/\s+/u).length : 0; }
+      function updateCount() {
+        const count = wordCount(promotion.value);
+        byId('word-count').textContent = count + ' / 150 words';
+        byId('word-count').classList.toggle('over-limit', count > 150);
+        promotion.setAttribute('aria-invalid', String(count > 150));
+        promotion.setCustomValidity(count > 150 ? 'Please shorten your promotion to 150 words or fewer.' : '');
+      }
+      function showStatus(message, isError = false) {
+        statusBox.textContent = message;
+        statusBox.classList.toggle('error', isError);
+        statusBox.hidden = !message;
+      }
+      function setBusy(value, prepareLabel) {
+        busy = value;
+        document.querySelectorAll('button').forEach(button => { button.disabled = value; });
+        byId('prepare-button').textContent = prepareLabel || 'Prepare my rewrite — £15';
+      }
+      function validCredential(value) { return typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\s<>]/u.test(value); }
+      function validOrder(order) { return order && validCredential(order.orderId) && validCredential(order.accessToken); }
+      function saveOrder() {
+        storedLocally = false;
+        if (!validOrder(currentOrder)) return;
+        try {
+          const record = { orderId:currentOrder.orderId, accessToken:currentOrder.accessToken };
+          if (currentOrder.sessionId) record.sessionId = currentOrder.sessionId;
+          localStorage.setItem(STORAGE_PREFIX + currentOrder.orderId, JSON.stringify(record));
+          localStorage.setItem(LAST_ORDER_KEY, currentOrder.orderId);
+          storedLocally = true;
+        } catch (_) { /* The in-memory order and private recovery link remain available. */ }
+        byId('storage-note').textContent = storedLocally
+          ? 'Your recovery details are saved in this browser. Save a private recovery link to open the order on another device.'
+          : 'This browser could not save your recovery details. Copy your private recovery link before leaving for checkout.';
+      }
+      function loadOrder(orderId) {
+        try {
+          const id = orderId || localStorage.getItem(LAST_ORDER_KEY);
+          if (!validCredential(id)) return null;
+          const order = JSON.parse(localStorage.getItem(STORAGE_PREFIX + id) || 'null');
+          return validOrder(order) && order.orderId === id ? order : null;
+        } catch (_) { return null; }
+      }
+      function recoveryUrl() {
+        const url = new URL(window.location.pathname, window.location.origin);
+        url.searchParams.set('order', currentOrder.orderId);
+        url.hash = new URLSearchParams({ access_token:currentOrder.accessToken }).toString();
+        return url.href;
+      }
+      async function request(body) {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 90000);
+        try {
+          const response = await fetch(API, {
+            method:'POST', headers:{ 'Content-Type':'application/json' },
+            credentials:'same-origin', cache:'no-store', signal:controller.signal,
+            body:JSON.stringify(body)
+          });
+          let data;
+          try { data = await response.json(); } catch (_) { throw new Error('The service did not return a readable response. Please try again.'); }
+          if (!data || typeof data !== 'object') throw new Error('The service response was incomplete. Please try again.');
+          if (!response.ok) {
+            const message = typeof data.error === 'string' ? data.error
+              : data.error && typeof data.error.message === 'string' ? data.error.message
+              : typeof data.message === 'string' ? data.message : 'The request could not be completed. Please try again.';
+            throw new Error(message);
+          }
+          return data;
+        } catch (error) {
+          if (error.name === 'AbortError') throw new Error('This is taking longer than expected. Please try again; keep your order recovery link if one is shown.');
+          if (error instanceof TypeError) throw new Error('Could not connect. Check your connection, then try again.');
+          throw error;
+        } finally { window.clearTimeout(timeout); }
+      }
+      function showOrder() {
+        form.hidden = true;
+        byId('order-panel').hidden = false;
+        byId('order-id').textContent = currentOrder.orderId;
+        byId('result-panel').hidden = true;
+        byId('payment-actions').hidden = false;
+        byId('order-badge').textContent = 'Awaiting payment';
+        byId('order-heading').textContent = 'Your order is ready';
+        byId('order-description').textContent = 'Continue to checkout to pay £15. Your rewrite will appear here after payment is confirmed.';
+        paidResult = null;
+        saveOrder();
+      }
+      function renderList(id, values, emptyText) {
+        const list = byId(id);
+        list.replaceChildren();
+        const rows = Array.isArray(values) && values.length ? values : [emptyText];
+        rows.forEach(value => {
+          const li = document.createElement('li');
+          li.textContent = typeof value === 'string' ? value : 'Review this point before publishing.';
+          list.appendChild(li);
+        });
+      }
+      function renderResult(data) {
+        const stringList = value => Array.isArray(value) && value.every(item => typeof item === 'string');
+        if (data.status !== 'PAID' || !['STRIPE','SYNTHETIC_TEST'].includes(data.paymentKind)
+          || !data.result || typeof data.result.text !== 'string' || !data.result.text.trim()
+          || !stringList(data.result.changes) || !data.result.flags
+          || !stringList(data.result.flags.human) || !stringList(data.result.flags.environment)
+          || !stringList(data.result.checkNotes) || typeof data.result.boundary !== 'string' || !data.result.boundary.trim()
+          || !data.receipt || data.receipt.orderId !== currentOrder.orderId || data.receipt.paymentKind !== data.paymentKind
+          || data.receipt.amountMinor !== 1500 || data.receipt.currency !== 'gbp'
+          || typeof data.receipt.label !== 'string' || !data.receipt.label.trim()) {
+          throw new Error('A verified, complete result is not available yet. Please check again.');
+        }
+        paidResult = data;
+        const isTest = data.paymentKind === 'SYNTHETIC_TEST' || data.receipt.mode !== 'live' || data.receipt.paymentConfirmed !== true;
+        byId('order-badge').textContent = isTest ? 'Test result — no real payment' : 'Stripe payment confirmed';
+        byId('order-heading').textContent = 'Your rewrite is ready';
+        byId('order-description').textContent = isTest
+          ? data.receipt.label
+          : 'Stripe payment has been confirmed. Your rewrite and review notes are below.';
+        byId('payment-actions').hidden = true;
+        byId('result-text').textContent = data.result.text;
+        renderList('changes-list', data.result.changes, 'No change note was supplied.');
+        renderList('check-notes', data.result.checkNotes, 'No review notes were supplied.');
+        renderList('human-flags', data.result.flags && data.result.flags.human, 'No specific people-related flags were identified. Review the wording for your audience.');
+        renderList('environment-flags', data.result.flags && data.result.flags.environment, 'No specific environmental flags were identified. Check any environmental claims before publishing.');
+        byId('result-boundary').textContent = data.result.boundary;
+        byId('payment-record').textContent = isTest
+          ? 'Test order record · ' + data.receipt.label
+          : 'Order record · £15 · ' + data.receipt.label;
+        byId('result-panel').hidden = false;
+        showStatus(isTest ? 'Test result retrieved. This is not evidence of a real payment.' : 'Your result has been retrieved.');
+      }
+      async function checkResult() {
+        if (busy || !validOrder(currentOrder)) return;
+        setBusy(true);
+        showStatus('Checking your payment and retrieving your order…');
+        try {
+          const data = await request({ action:'result', orderId:currentOrder.orderId, accessToken:currentOrder.accessToken, ...(currentOrder.sessionId ? { sessionId:currentOrder.sessionId } : {}) });
+          if (data.status === 'PAID') { renderResult(data); }
+          else {
+            byId('payment-actions').hidden = false;
+            showStatus(data.status === 'PROCESSING'
+              ? 'Your order is still being processed. Check again shortly.'
+              : 'Payment has not been confirmed. If you have paid, wait a moment and check again. Otherwise, continue to checkout.');
+          }
+        } catch (error) { showStatus(error.message, true); }
+        finally { setBusy(false); }
+      }
+      async function copyText(text, successMessage) {
+        try {
+          if (!navigator.clipboard || !window.isSecureContext) throw new Error('Clipboard unavailable');
+          await navigator.clipboard.writeText(text);
+          showStatus(successMessage);
+        } catch (_) {
+          // A local download works even when clipboard permissions are unavailable.
+          downloadText(text, paidResult && text === paidResult.result.text ? 'promotion-fix-rewrite.txt' : 'promotion-fix-private-recovery-link.txt');
+          showStatus('Clipboard access was unavailable. A text file has been downloaded instead.');
+        }
+      }
+      function downloadText(text, name) {
+        const blob = new Blob([text], { type:'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url; anchor.download = name;
+        document.body.appendChild(anchor); anchor.click(); anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      function asLines(values) { return Array.isArray(values) && values.length ? values.map(value => '- ' + String(value)).join('\n') : '- No specific flags supplied. Review before publishing.'; }
+
+      promotion.addEventListener('input', updateCount);
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        updateCount();
+        if (busy || !form.reportValidity()) return;
+        if (!promotion.value.trim()) { showStatus('Add your promotion before continuing.', true); promotion.focus(); return; }
+        setBusy(true, 'Preparing your rewrite…');
+        showStatus('Preparing your rewrite. You have not been charged.');
+        try {
+          const data = await request({ action:'prepare', promotion:promotion.value.trim(), language:byId('language').value, factsConfirmed:byId('facts-confirmed').checked });
+          if (data.status !== 'READY_UNPAID' || !validOrder(data)) throw new Error('The service could not prepare an order. Please try again.');
+          currentOrder = { orderId:data.orderId, accessToken:data.accessToken };
+          showOrder();
+          showStatus('Your order is prepared. Save your private recovery link, then continue to checkout.');
+        } catch (error) { showStatus(error.message, true); }
+        finally { setBusy(false); }
+      });
+      byId('checkout-button').addEventListener('click', async () => {
+        if (busy || !validOrder(currentOrder)) return;
+        setBusy(true);
+        showStatus('Opening checkout…');
+        try {
+          saveOrder();
+          const data = await request({ action:'checkout', orderId:currentOrder.orderId, accessToken:currentOrder.accessToken });
+          if (data.status === 'PAID') { renderResult(data); setBusy(false); return; }
+          if (typeof data.checkoutUrl !== 'string') throw new Error('Checkout is temporarily unavailable. Your order is saved; please try again.');
+          const checkout = new URL(data.checkoutUrl);
+          if (checkout.protocol !== 'https:' || checkout.hostname !== 'checkout.stripe.com') throw new Error('Checkout returned an unexpected destination. Please try again later.');
+          window.location.assign(checkout.href);
+        } catch (error) { showStatus(error.message, true); setBusy(false); }
+      });
+      byId('check-button').addEventListener('click', checkResult);
+      byId('copy-recovery').addEventListener('click', () => {
+        if (validOrder(currentOrder)) copyText(recoveryUrl(), 'Private recovery link copied. Keep it somewhere only you can access.');
+      });
+      byId('copy-result').addEventListener('click', () => {
+        if (paidResult) copyText(paidResult.result.text, 'Rewrite copied.');
+      });
+      byId('download-result').addEventListener('click', () => {
+        if (!paidResult) return;
+        const result = paidResult.result;
+        const text = [
+          'PROMOTION FIX', '', result.text, '', 'WHAT CHANGED', asLines(result.changes), '',
+          'REVIEW NOTES', asLines(result.checkNotes), '',
+          'PEOPLE: POINTS TO REVIEW', asLines(result.flags && result.flags.human), '',
+          'ENVIRONMENT: POINTS TO REVIEW', asLines(result.flags && result.flags.environment), '',
+          result.boundary, '',
+          'Order reference: ' + currentOrder.orderId,
+          paidResult.receipt.label, '',
+          'VERIFIED ORDER RECEIPT', JSON.stringify(paidResult.receipt, null, 2)
+        ].join('\n');
+        downloadText(text, 'promotion-fix-result.txt');
+        showStatus('Your result and order record have been downloaded.');
+      });
+      byId('new-button').addEventListener('click', () => {
+        currentOrder = null; paidResult = null;
+        byId('order-panel').hidden = true; byId('result-panel').hidden = true; form.hidden = false;
+        history.replaceState(null, '', window.location.pathname);
+        showStatus('You can prepare another promotion. Previous orders remain accessible with their private recovery links.');
+        form.reset(); updateCount(); promotion.focus();
+      });
+      byId('recover-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        if (busy) return;
+        try {
+          const url = new URL(byId('recovery-input').value.trim());
+          if (url.origin !== window.location.origin || url.pathname !== window.location.pathname) throw new Error('Use a Promotion Fix recovery link from this site.');
+          const order = { orderId:url.searchParams.get('order'), accessToken:new URLSearchParams(url.hash.slice(1)).get('access_token') };
+          if (!validOrder(order)) throw new Error('That recovery link is incomplete. Paste the full private link, including the part after #.');
+          currentOrder = order;
+          byId('recovery-input').value = '';
+          byId('recover-details').open = false;
+          showOrder();
+          await checkResult();
+        } catch (error) { showStatus(error.message, true); }
+      });
+      function initialise() {
+        updateCount();
+        const url = new URL(window.location.href);
+        const orderId = url.searchParams.get('order');
+        const accessToken = new URLSearchParams(url.hash.slice(1)).get('access_token');
+        const sessionId = url.searchParams.get('session_id');
+        // Remove credentials from the visible address before making any network request.
+        if (url.hash || url.searchParams.has('token')) {
+          url.hash = ''; url.searchParams.delete('token');
+          history.replaceState(null, '', url.pathname + url.search);
+        }
+        const incoming = { orderId, accessToken };
+        currentOrder = validOrder(incoming) ? incoming : loadOrder(orderId);
+        if (validOrder(currentOrder)) {
+          if (validCredential(sessionId)) currentOrder.sessionId = sessionId;
+          showOrder();
+          checkResult();
+        } else if (orderId) {
+          showStatus('This browser has no recovery details for that order. Paste your saved private recovery link below.', true);
+          byId('recover-details').open = true;
+        }
+      }
+      initialise();
+    })();
+  </script>
+</body>
+</html>

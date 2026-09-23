@@ -108,3 +108,9 @@ temp/
 
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
+# Private JARUS packaging and local engine dumps
+.private/
+**/.private/
+.vercel/qualification/
+**/.vercel/qualification/
+**/*jarus*dump*

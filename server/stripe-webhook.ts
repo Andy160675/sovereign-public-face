@@ -11,7 +11,11 @@
  *
  * Registered BEFORE express.json() to receive raw body for signature verification.
  */
-import type { Express, Request, Response } from "express";
+import type {
+  Express,
+  Request as ExpressRequest,
+  Response as ExpressResponse,
+} from "express";
 import express from "express";
 import Stripe from "stripe";
 import {
@@ -22,11 +26,7 @@ import {
   sha256Bytes,
   type ReceiptJournal,
   type RecordedEvent,
-} from "./stripe-receipt-store";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-02-25.clover",
-});
+} from "./stripe-receipt-store.js";
 
 export type ExpectedAmount =
   | { amount: number; currency: string; source: string }
@@ -100,7 +100,7 @@ function eventFingerprint(event: Stripe.Event): string {
   });
 }
 
-function respond(res: Response, result: HttpResult): void {
+function respond(res: ExpressResponse, result: HttpResult): void {
   res.status(result.status).json(result.body);
 }
 
@@ -125,7 +125,7 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
   app.post(
     "/api/stripe/webhook",
     express.raw({ type: "application/json" }),
-    async (req: Request, res: Response) => {
+    async (req: ExpressRequest, res: ExpressResponse) => {
       const rawBody: Buffer = Buffer.isBuffer(req.body)
         ? req.body
         : Buffer.from(typeof req.body === "string" ? req.body : JSON.stringify(req.body ?? ""));
@@ -196,6 +196,29 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
       }
 
       // ── 2. SIGNATURE verify (SDK retains timestamp/replay protection) ───
+      // Construct the SDK only when a signed request reaches verification.
+      // Importing the module or serving unrelated routes must not require a payment key.
+      const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeSecretKey) {
+        try {
+          await journal.transact(connectorId, async (tx) => {
+            await tx.append("stripe.safe", {
+              trigger: "missing_stripe_secret_key",
+              delivery_id: deliveryId,
+              tier: "connector",
+              scope: connectorId,
+              grants_affected: [],
+              notification_sent: false,
+            });
+          });
+        } catch {
+          return res.status(500).json({ error: "Receipt storage fault" });
+        }
+        return res.status(503).json({ error: "Stripe configuration unavailable" });
+      }
+      const stripe = new Stripe(stripeSecretKey, {
+        apiVersion: "2026-02-25.clover",
+      });
       let event: Stripe.Event;
       try {
         event = stripe.webhooks.constructEvent(rawBody, sig, secret);
