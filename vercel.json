@@ -9,9 +9,17 @@
     "api/stripe/webhook.ts": {
       "memory": 256,
       "maxDuration": 30
+    },
+    "api/promotion-fix.js": {
+      "memory": 256,
+      "maxDuration": 60
     }
   },
   "rewrites": [
+    {
+      "source": "/promotion-fix.html",
+      "destination": "/promotion-fix.html"
+    },
     {
       "source": "/api/stripe/webhook",
       "destination": "/api/stripe/webhook"
