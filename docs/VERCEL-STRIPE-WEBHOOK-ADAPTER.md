@@ -11,7 +11,7 @@
 | Project id | `prj_0F4lm0ET6Xo3uB09JYXsS6x1obWg` |
 | Team id | `team_r5WswUIfukbM16eQNWHGXT1S` |
 | Intended webhook URL | `https://sovereign-public-face.vercel.app/api/stripe/webhook` |
-| Prod env vars today | **`STRIPE_SECRET_KEY` CONFIGURED** (Production, sensitive). Remaining six still need Codex provision / host pin inject — do **not** claim all-seven SOURCE ABSENT |
+| Historical prod env readback | **`STRIPE_SECRET_KEY` CONFIGURED** (Production, sensitive) at t736u. This checkout key does not configure the receipt route; `STRIPE_RECEIPT_SECRET_KEY` needs separate provision and current host readback. Other Stage 4 inputs still need qualification. |
 | Attach to `codex-sovereign` | **FORBIDDEN** |
 
 This document **names** the host. Forge does **not** create/link/delete the project, set env, or deploy.
@@ -36,10 +36,18 @@ Do **not** copy private `jarus/` into this public repo. Load ReceiptEngine only 
 | `JARUS_RECEIPT_ENGINE_PATH` | Absolute path to reviewed engine entry on the **runtime host** (or function layer Codex mounts) |
 | `JARUS_RECEIPT_ENGINE_SHA256` | SHA-256 of those exact bytes |
 | `STRIPE_RECEIPT_DATABASE_URL` | Prod MySQL journal URI |
-| `STRIPE_WEBHOOK_SECRET` | Stripe signing secret |
-| `STRIPE_SECRET_KEY` | Stripe SDK init |
+| `STRIPE_WEBHOOK_SECRET` | Signing secret of this receipt endpoint, from the intended Stripe account |
+| `STRIPE_RECEIPT_SECRET_KEY` | Dedicated receipt endpoint Stripe SDK key; no fallback to checkout `STRIPE_SECRET_KEY` |
 | `STRIPE_RECEIPT_MODE` | `live` or omit/`test` |
 | `STRIPE_RECEIPT_CONNECTOR_ID` | Connector PK |
+
+The receipt route has **no fallback** from `STRIPE_RECEIPT_SECRET_KEY` to the
+checkout `STRIPE_SECRET_KEY`; a missing receipt key returns 503 after its
+Delivery/SAFE record. Stripe signature verification is local. The SDK key by
+itself does **not** prove which Stripe account emitted an event. Production
+qualification must separately confirm that the event destination and its
+`STRIPE_WEBHOOK_SECRET` belong to the intended account, and bind the connector
+identity to that account before any live paid claim or fulfilment.
 
 Resolution order (see `server/stripe-receipt-store.ts` + `docs/CI-JARUS-RECEIPT-ENGINE.md`):
 
@@ -83,7 +91,7 @@ remains **Codex / QUALIFY after Stage4 env inject** — not closed by this draft
 ```bash
 export JARUS_RECEIPT_ENGINE_PATH="/absolute/path/to/jarus/dist/index.js"
 export JARUS_RECEIPT_ENGINE_SHA256="<sha256 of that file>"
-export STRIPE_SECRET_KEY="sk_test_ci_dummy_not_live"
+export STRIPE_RECEIPT_SECRET_KEY="sk_test_ci_dummy_not_live"
 pnpm test   # or: node scripts/ci-with-jarus-pin.mjs
 ```
 
