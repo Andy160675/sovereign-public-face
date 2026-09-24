@@ -39,6 +39,8 @@ export interface ReceiptTransaction {
   append(kind: string, payload: unknown): Promise<Receipt>;
   getEvent(eventId: string): Promise<RecordedEvent | null>;
   putEvent(event: RecordedEvent): Promise<void>;
+  /** Verified connector chain, scoped to a local opaque stop ID. */
+  getStopEvents(stopId: string): Promise<unknown[]>;
 }
 
 export interface ReceiptJournal {
@@ -138,6 +140,7 @@ export function createMemoryReceiptJournal(seed?: {
       try {
         const runtime = receiptRuntime(false);
         const engine = new runtime.ReceiptEngine({ chain });
+        if (!engine.verify().valid) throw new Error("RECEIPT_CHAIN_INVALID");
         const draft = new Map(events);
         const tx: ReceiptTransaction = {
           state: state.mode,
@@ -151,6 +154,12 @@ export function createMemoryReceiptJournal(seed?: {
           async putEvent(row: RecordedEvent) {
             if (draft.has(row.eventId)) throw new Error("duplicate primary key");
             draft.set(row.eventId, structuredClone(row));
+          },
+          async getStopEvents(stopId: string) {
+            return engine.chain.filter((receipt) =>
+              receipt.kind === "ops.stop" &&
+              (receipt.payload as { stop_id?: unknown })?.stop_id === stopId,
+            ).map((receipt) => structuredClone(receipt.payload));
           },
         };
         const result = await callback(tx);
@@ -200,6 +209,7 @@ export class MysqlReceiptJournal implements ReceiptJournal {
       const chain = rows.map((row) => jsonParse<Receipt>(row.receipt_json));
       const engine = new runtime.ReceiptEngine({ chain });
       if (
+        !engine.verify().valid ||
         rows.some((row, i) => Number(row.receipt_index) !== i) ||
         Number(head.chain_length) !== chain.length ||
         head.head_hash !== engine.headHash
@@ -245,6 +255,12 @@ export class MysqlReceiptJournal implements ReceiptJournal {
             "INSERT INTO stripe_recorded_events (connector_id, event_id, record_json) VALUES (?, ?, ?)",
             [connector, record.eventId, JSON.stringify(record)],
           );
+        },
+        async getStopEvents(stopId) {
+          return engine.chain.filter((receipt) =>
+            receipt.kind === "ops.stop" &&
+            (receipt.payload as { stop_id?: unknown })?.stop_id === stopId,
+          ).map((receipt) => structuredClone(receipt.payload));
         },
       };
       const result = await run(tx);

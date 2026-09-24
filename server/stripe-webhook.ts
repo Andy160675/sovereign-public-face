@@ -27,6 +27,7 @@ import {
   type ReceiptJournal,
   type RecordedEvent,
 } from "./stripe-receipt-store.js";
+import { appendOperationalStop, type OpenOperationalStop } from "./operational-stop-log.js";
 
 export type ExpectedAmount =
   | { amount: number; currency: string; source: string }
@@ -62,6 +63,19 @@ export interface StripeWebhookOptions {
 }
 
 type HttpResult = { status: number; body: Record<string, unknown> };
+
+function webhookStop(
+  deliveryId: string,
+  evidenceHash: string,
+  fields: Pick<OpenOperationalStop, "stage" | "category" | "code" | "heldEffect" | "recovery" | "exitCheck">,
+): OpenOperationalStop {
+  return {
+    correlationId: deliveryId,
+    ...fields,
+    owner: "PRODUCTION_ENGINEERING",
+    evidenceRefs: [`receipt:sha256:${evidenceHash}`],
+  };
+}
 
 function defaultJournal(): ReceiptJournal {
   const uri = process.env.STRIPE_RECEIPT_DATABASE_URL;
@@ -140,17 +154,19 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
       const deliveryId = newDeliveryId();
       const receivedAt = clock();
       const payloadHash = sha256Bytes(rawBody);
+      let deliveryEvidenceHash: string;
 
       // ── 1. DELIVERY (before verify; event_id must be null) ──────────────
       try {
-        await journal.transact(connectorId, async (tx) => {
-          await tx.append("stripe.delivery", {
+        deliveryEvidenceHash = await journal.transact(connectorId, async (tx) => {
+          const receipt = await tx.append("stripe.delivery", {
             connector_id: connectorId,
             delivery_id: deliveryId,
             received_at: receivedAt,
             payload_hash: payloadHash,
             event_id: null,
           });
+          return receipt.hash;
         });
       } catch {
         return res.status(500).json({ error: "Receipt storage fault" });
@@ -162,6 +178,11 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
       if (!secret) {
         try {
           await journal.transact(connectorId, async (tx) => {
+            await appendOperationalStop(tx, webhookStop(deliveryId, deliveryEvidenceHash, {
+              stage: "PAYMENT_BINDING", category: "CONFIG", code: "WEBHOOK_SECRET_UNAVAILABLE",
+              heldEffect: "PAID_ADMISSION", recovery: "CONFIGURE_WEBHOOK_AND_REPLAY",
+              exitCheck: "SIGNED_EVENT_REPLAY_RECORDED",
+            }));
             await tx.append("stripe.safe", {
               trigger: "missing_webhook_secret",
               delivery_id: deliveryId,
@@ -198,12 +219,20 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
       // ── 2. SIGNATURE verify (SDK retains timestamp/replay protection) ───
       // Construct the SDK only when a signed request reaches verification.
       // Importing the module or serving unrelated routes must not require a payment key.
-      const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+      // This receipt endpoint is configured independently from checkout and
+      // Promotion Fix. Never fall back to their STRIPE_SECRET_KEY: a checkout
+      // merchant change must not silently reconfigure this connector.
+      const stripeSecretKey = process.env.STRIPE_RECEIPT_SECRET_KEY;
       if (!stripeSecretKey) {
         try {
           await journal.transact(connectorId, async (tx) => {
+            await appendOperationalStop(tx, webhookStop(deliveryId, deliveryEvidenceHash, {
+              stage: "PAYMENT_BINDING", category: "CONFIG", code: "RECEIPT_KEY_UNAVAILABLE",
+              heldEffect: "PAID_ADMISSION", recovery: "CONFIGURE_RECEIPT_KEY_AND_REPLAY",
+              exitCheck: "SIGNED_EVENT_REPLAY_RECORDED",
+            }));
             await tx.append("stripe.safe", {
-              trigger: "missing_stripe_secret_key",
+              trigger: "missing_stripe_receipt_secret_key",
               delivery_id: deliveryId,
               tier: "connector",
               scope: connectorId,
@@ -274,7 +303,7 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
                 },
               };
               // Do not putEvent again (PK). Update disposition via SAFE evidence only.
-              await tx.append("stripe.classification", {
+              const classification = await tx.append("stripe.classification", {
                 event_id: event.id,
                 event_type: event.type,
                 scope_decision: "hold",
@@ -286,6 +315,11 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
                   disposition: "held",
                 }),
               });
+              await appendOperationalStop(tx, webhookStop(deliveryId, classification.hash, {
+                stage: "PAYMENT_BINDING", category: "DATA", code: "EVENT_COLLISION",
+                heldEffect: "PAID_ADMISSION", recovery: "REVIEW_CONNECTOR_AND_REPLAY",
+                exitCheck: "CONNECTOR_SCOPE_VERIFIED",
+              }));
               await tx.append("stripe.safe", {
                 trigger: "event_id_content_collision",
                 delivery_id: deliveryId,
@@ -327,7 +361,7 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
               response,
             };
             const rh = recordHash(record);
-            await tx.append("stripe.classification", {
+            const classification = await tx.append("stripe.classification", {
               event_id: event.id,
               event_type: event.type,
               scope_decision: "hold",
@@ -340,6 +374,11 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
               expected_amount_match: null,
               record_hash: rh,
             });
+            await appendOperationalStop(tx, webhookStop(deliveryId, classification.hash, {
+              stage: "PAYMENT_BINDING", category: "AUTHORITY", code: "CONNECTOR_NOT_ACTIVE",
+              heldEffect: "PAID_ADMISSION", recovery: "REVIEW_CONNECTOR_AND_REPLAY",
+              exitCheck: "CONNECTOR_SCOPE_VERIFIED",
+            }));
             await tx.append("stripe.safe", {
               trigger: tx.state === "QUARANTINED" ? "connector_quarantined" : "connector_suspended",
               delivery_id: deliveryId,
@@ -369,7 +408,7 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
               response,
             };
             const rh = recordHash(record);
-            await tx.append("stripe.classification", {
+            const classification = await tx.append("stripe.classification", {
               event_id: event.id,
               event_type: event.type,
               scope_decision: "hold",
@@ -382,6 +421,11 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
               expected_amount_match: null,
               record_hash: rh,
             });
+            await appendOperationalStop(tx, webhookStop(deliveryId, classification.hash, {
+              stage: "PAYMENT_BINDING", category: "CONFIG", code: "CONNECTOR_MODE_MISMATCH",
+              heldEffect: "PAID_ADMISSION", recovery: "REVIEW_CONNECTOR_AND_REPLAY",
+              exitCheck: "CONNECTOR_SCOPE_VERIFIED",
+            }));
             await tx.append("stripe.safe", {
               trigger: "mode_mismatch",
               delivery_id: deliveryId,
@@ -453,7 +497,7 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
               response,
             };
             const rh = recordHash(record);
-            await tx.append("stripe.classification", {
+            const classification = await tx.append("stripe.classification", {
               event_id: event.id,
               event_type: event.type,
               observed_amount: observed.amount,
@@ -468,6 +512,17 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
               refusal_reason: refusalReason,
               record_hash: rh,
             });
+            const priceFailure = refusalReason === "amount_mismatch" || refusalReason === "currency_mismatch";
+            await appendOperationalStop(tx, webhookStop(deliveryId, classification.hash, {
+              stage: "PAID_ADMISSION",
+              category: priceFailure || refusalReason === "missing_expected_order" ? "DATA" : "AUTHORITY",
+              code: priceFailure ? "PRICE_MISMATCH" :
+                refusalReason === "missing_expected_order" ? "EXPECTED_ORDER_MISSING" : "AUTHORITY_REFUSED",
+              heldEffect: "INTAKE_REQUEST",
+              recovery: priceFailure || refusalReason === "missing_expected_order" ?
+                "BIND_ORDER_AND_REPLAY" : "REVIEW_AND_RETRY",
+              exitCheck: "ORDER_BOUND_TO_PAYMENT",
+            }));
             await tx.putEvent(record);
             return response;
           }
@@ -504,7 +559,7 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
 
           // ── EXECUTION: RECORDED_ONLY (no fulfilment / provisioning) ────
           await tx.putEvent(record);
-          await tx.append("stripe.execution", {
+          const execution = await tx.append("stripe.execution", {
             event_id: event.id,
             delivery_id: deliveryId,
             operation: "record",
@@ -520,6 +575,18 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
             paid_claim: false,
             entitlement_granted: false,
           });
+
+          // A signed paid Checkout observation is not an admitted order. Until
+          // a trusted order binding and authorised intake exist, log that stop
+          // before acknowledging the record-only receipt.
+          const checkout = event.data.object as unknown as Record<string, unknown>;
+          if (event.type === "checkout.session.completed" && checkout.payment_status === "paid") {
+            await appendOperationalStop(tx, webhookStop(deliveryId, execution.hash, {
+              stage: "PAID_ADMISSION", category: "CONFIG", code: "PAID_ADMISSION_NOT_CONFIGURED",
+              heldEffect: "INTAKE_REQUEST", recovery: "BIND_ORDER_AND_REPLAY",
+              exitCheck: "ORDER_BOUND_TO_PAYMENT",
+            }));
+          }
 
           // SAFE absent on normal success.
           return response;
