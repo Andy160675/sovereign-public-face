@@ -1,0 +1,14 @@
+{
+  "version": "2026.09.24.1",
+  "release": "JARUS-Offline-Desktop-20260924-R1",
+  "chunkCount": 12,
+  "chunkPattern": "chunk-{00..11}.b64",
+  "chunkSizes": [6000, 6000, 6000, 6000, 6000, 6000, 6000, 6000, 6000, 6000, 6000, 592],
+  "base64Length": 66592,
+  "transportBytes": 49942,
+  "transportSha256": "3e343506ea3ad767e518abf3e25da9a5ac3dd4ede6de6b6b228aa6271b10bf82",
+  "sourceZipBytes": 49875,
+  "sourceZipSha256": "62b86bfbdcc49ba4958299adf48a4d8eab2f561e0e8c79423c67d4f109c49fc4",
+  "encryption": "AES-256-CBC + HMAC-SHA256",
+  "keyMaterial": "NOT_PUBLIC"
+}
