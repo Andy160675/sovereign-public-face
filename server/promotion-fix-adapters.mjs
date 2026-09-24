@@ -262,6 +262,15 @@ export function createStripeClient(env, fetchImpl = fetch) {
         'line_items[0][price_data][currency]': 'gbp',
         'line_items[0][price_data][unit_amount]': '1500',
         'line_items[0][price_data][product_data][name]': 'Promotion Fix',
+        // D22: require ToS acceptance + digital-content consent wording at Checkout.
+        // Needs Terms of service URL set in Stripe Dashboard → Settings → Public details
+        // (business_profile.terms_of_service_url). Without it, session create may fail.
+        'consent_collection[terms_of_service]': 'required',
+        'custom_text[terms_of_service_acceptance][message]': (
+          'I agree to the [Terms of Service](https://vipfish.ai/terms) and [Refund Policy](https://vipfish.ai/refunds). '
+          + 'I ask Codex Sovereign Systems Ltd to supply the digital Promotion Fix rewrite immediately after payment '
+          + 'and I acknowledge that I will lose my 14-day Consumer Contracts Regulations cancellation right once supply begins.'
+        ),
         success_url: success, cancel_url: cancel,
       });
       return requestJSON(fetchImpl, endpoint, {
