@@ -165,6 +165,12 @@ test('Stripe always creates the fixed £15 GBP product regardless of order price
   assert.ok(![...form.keys()].some(key => /^payment_method_(?:types|configuration)/.test(key)));
   assert.equal(form.get('success_url'), 'https://example.test/success');
   assert.equal(form.get('cancel_url'), 'https://example.test/cancel');
+  assert.equal(form.get('consent_collection[terms_of_service]'), 'required');
+  const tosMsg = form.get('custom_text[terms_of_service_acceptance][message]');
+  assert.ok(tosMsg && tosMsg.includes('https://vipfish.ai/terms'));
+  assert.ok(tosMsg.includes('https://vipfish.ai/refunds'));
+  assert.ok(tosMsg.includes('Codex Sovereign Systems Ltd'));
+  assert.ok(tosMsg.toLowerCase().includes('cancellation'));
 });
 
 test('Stripe detects live mode and encodes retrieval ids on its fixed API host', async () => {
