@@ -6,9 +6,11 @@ import { PRODUCTS, getProductById } from "./products";
 import { z } from "zod";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-02-25.clover",
-});
+function createStripeClient() {
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!key) throw new Error("Payment service is not configured.");
+  return new Stripe(key, { apiVersion: "2026-02-25.clover" });
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -99,7 +101,7 @@ export const appRouter = router({
           cancel_url: `${origin}/checkout/cancel`,
         };
 
-        const session = await stripe.checkout.sessions.create(sessionParams);
+        const session = await createStripeClient().checkout.sessions.create(sessionParams);
         return { url: session.url };
       }),
   }),
