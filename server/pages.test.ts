@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
+import { PRODUCTS } from "./products";
 import type { TrpcContext } from "./_core/context";
+
+afterEach(() => vi.unstubAllEnvs());
 
 /**
  * Test that the auth.me public procedure works for unauthenticated users.
@@ -86,5 +89,33 @@ describe("Public Face — Page routes validation", () => {
   it("no duplicate routes exist", () => {
     const unique = new Set(expectedPages);
     expect(unique.size).toBe(expectedPages.length);
+  });
+});
+
+describe("Stripe checkout configuration", () => {
+  it("loads non-payment routes without a key and fails only when checkout is invoked", async () => {
+    const ctx: TrpcContext = {
+      user: {
+        id: 1,
+        openId: "test-user",
+        email: "test@example.com",
+        name: "Test User",
+        loginMethod: "manus",
+        role: "user",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+      },
+      req: { protocol: "https", headers: {} } as TrpcContext["req"],
+      res: { clearCookie: () => {} } as TrpcContext["res"],
+    };
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.auth.me()).resolves.toMatchObject({ id: 1 });
+    for (const key of ["", "   "]) {
+      vi.stubEnv("STRIPE_SECRET_KEY", key);
+      await expect(caller.checkout.createSession({ productId: PRODUCTS[0]!.id })).rejects.toThrow(
+        "Payment service is not configured.",
+      );
+    }
   });
 });
