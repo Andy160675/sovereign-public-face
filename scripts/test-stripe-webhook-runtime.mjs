@@ -14,6 +14,7 @@ const paths = [
   'server/createStripeWebhookApp.ts',
   'server/stripe-webhook.ts',
   'server/stripe-receipt-store.ts',
+  'server/operational-stop-log.ts',
 ];
 let server;
 try {
@@ -37,7 +38,7 @@ try {
   for (const key of Object.keys(process.env)) {
     if (key.startsWith('STRIPE_') || key.startsWith('JARUS_')) delete process.env[key];
   }
-  process.env.STRIPE_SECRET_KEY = 'sk_test_runtime_smoke_dummy';
+  process.env.STRIPE_RECEIPT_SECRET_KEY = 'sk_test_runtime_smoke_dummy';
   const { default: app } = await import(pathToFileURL(join(output, 'api/stripe/webhook.js')).href);
   assert.equal(typeof app, 'function');
   server = createServer(app);

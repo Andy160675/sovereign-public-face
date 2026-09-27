@@ -29,7 +29,7 @@ when it changes. Do not claim the old digest without re-hashing.
 ```bash
 export JARUS_RECEIPT_ENGINE_PATH="/absolute/path/to/jarus/dist/index.js"
 export JARUS_RECEIPT_ENGINE_SHA256="eb95f6331f3396703c4dee49158849194126bb8ff092100cf3a9a7c2d6dafa48"
-export STRIPE_SECRET_KEY="sk_test_ci_dummy_not_live"   # module init only; no live Stripe
+export STRIPE_RECEIPT_SECRET_KEY="sk_test_ci_dummy_not_live"   # receipt signature fixture only; no live Stripe
 node scripts/ci-with-jarus-pin.mjs   # fails closed on missing/wrong pin, then npm test
 ```
 

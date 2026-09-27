@@ -62,7 +62,8 @@ async function boot(j: MemoryReceiptJournal) {
   expectedPolicy = undefined;
   journal = j;
   configuredSecret = secret;
-  vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_local_receipt_fixture");
+  vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_checkout_fixture");
+  vi.stubEnv("STRIPE_RECEIPT_SECRET_KEY", "sk_test_local_receipt_fixture");
   vi.stubEnv("STRIPE_WEBHOOK_SECRET", secret);
   const app = express();
   registerStripeWebhook(app, {
@@ -289,6 +290,31 @@ describe("Stripe receipt patch (no provisioning)", () => {
     expect((await post(event())).status).toBe(503);
     expect(journal.events.size).toBe(0);
     expect(journal.chain.at(-1)?.kind).toBe("stripe.safe");
+  });
+
+  it("does not fall back to the checkout key when the receipt key is absent", async () => {
+    vi.stubEnv("STRIPE_RECEIPT_SECRET_KEY", "");
+    // STRIPE_SECRET_KEY remains configured for checkout. It cannot enable the receipt route.
+    expect((await post(event("evt_no_receipt_key"))).status).toBe(503);
+    expect(journal.events.size).toBe(0);
+    expect(journal.chain.map((r) => r.kind)).toEqual(["stripe.delivery", "ops.stop", "stripe.safe"]);
+    expect(journal.chain[1]?.payload).toMatchObject({
+      code: "RECEIPT_KEY_UNAVAILABLE", next_effect_held: "PAID_ADMISSION",
+    });
+    expect(journal.chain.at(-1)?.payload).toMatchObject({
+      trigger: "missing_stripe_receipt_secret_key",
+      scope: "stripe:unit:test",
+    });
+  });
+
+  it("uses the dedicated receipt key even when the checkout key is absent", async () => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "");
+    expect((await post(event("evt_dedicated_receipt_key"))).status).toBe(200);
+    expect(journal.events.size).toBe(1);
+    expect(journal.chain.at(-1)?.payload).toMatchObject({
+      result: "RECORDED_ONLY",
+      paid_claim: false,
+    });
   });
 });
 

@@ -68,7 +68,8 @@ async function postRaw(body: Buffer | string, signature?: string) {
 
 beforeEach(async () => {
   journal = createMemoryReceiptJournal();
-  vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_adapter_fixture");
+  vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_checkout_fixture");
+  vi.stubEnv("STRIPE_RECEIPT_SECRET_KEY", "sk_test_adapter_fixture");
   vi.stubEnv("STRIPE_WEBHOOK_SECRET", secret);
   const app = createStripeWebhookApp({
     webhookOnly: true,
