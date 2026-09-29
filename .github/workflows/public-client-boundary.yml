@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: read
+  # Reading the private receipt engine from GitHub Packages.
+  packages: read
 
 jobs:
   verify:
@@ -29,6 +31,11 @@ jobs:
 
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          # Read access to the private receipt engine. GITHUB_TOKEN suffices
+          # only once this repository is granted read access to that package;
+          # otherwise set a JARUS_REGISTRY_TOKEN secret with read:packages.
+          JARUS_REGISTRY_TOKEN: ${{ secrets.JARUS_REGISTRY_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Run tests
         run: pnpm test
