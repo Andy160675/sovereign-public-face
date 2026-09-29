@@ -169,7 +169,7 @@ test('Stripe always creates the fixed £15 GBP product regardless of order price
   const tosMsg = form.get('custom_text[terms_of_service_acceptance][message]');
   assert.ok(tosMsg && tosMsg.includes('https://vipfish.ai/terms'));
   assert.ok(tosMsg.includes('https://vipfish.ai/refunds'));
-  assert.ok(tosMsg.includes('Codex Sovereign Systems Ltd'));
+  assert.ok(tosMsg.includes('VIP FISH LTD'));
   assert.ok(tosMsg.toLowerCase().includes('cancellation'));
 });
 

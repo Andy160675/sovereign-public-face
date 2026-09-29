@@ -268,7 +268,7 @@ export function createStripeClient(env, fetchImpl = fetch) {
         'consent_collection[terms_of_service]': 'required',
         'custom_text[terms_of_service_acceptance][message]': (
           'I agree to the [Terms of Service](https://vipfish.ai/terms) and [Refund Policy](https://vipfish.ai/refunds). '
-          + 'I ask Codex Sovereign Systems Ltd to supply the digital Promotion Fix rewrite immediately after payment '
+          + 'I ask VIP FISH LTD to supply the digital Promotion Fix rewrite immediately after payment '
           + 'and I acknowledge that I will lose my 14-day Consumer Contracts Regulations cancellation right once supply begins.'
         ),
         success_url: success, cancel_url: cancel,
