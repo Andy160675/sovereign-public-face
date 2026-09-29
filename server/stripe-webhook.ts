@@ -100,6 +100,36 @@ function eventFingerprint(event: Stripe.Event): string {
   });
 }
 
+// Known receipt-fault codes. Each is a fixed string thrown by the receipt
+// runtime or journal — none carries customer data, so each is safe to log.
+const RECEIPT_FAULT_CODES = new Set([
+  "JARUS_PATH_MUST_BE_ABSOLUTE",
+  "JARUS_RUNTIME_PIN_REQUIRED",
+  "JARUS_RUNTIME_PIN_MISMATCH",
+  "JARUS_RUNTIME_INVALID",
+  "CONNECTOR_NOT_PROVISIONED",
+  "RECEIPT_HEAD_MISMATCH",
+  "RECEIPT_CHAIN_INVALID",
+  "EVENT_RECORD_EVIDENCE_MISMATCH",
+  "MODULE_NOT_FOUND",
+]);
+
+// A receipt write failed. The caller still answers 500 so Stripe retries; this
+// records WHICH stage failed and, when the cause is one of the fixed fault
+// codes above, which fault. Same discipline as the routine log: never email,
+// metadata, raw body, secret, signature or IP — so an unrecognised error
+// contributes its class name only, never its message.
+function logReceiptFault(stage: string, err: unknown): void {
+  let cause = "unknown";
+  if (err instanceof Error) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (typeof code === "string" && RECEIPT_FAULT_CODES.has(code)) cause = code;
+    else if (RECEIPT_FAULT_CODES.has(err.message)) cause = err.message;
+    else cause = err.constructor.name;
+  }
+  console.error(`[Stripe Webhook] receipt fault stage=${stage} cause=${cause}`);
+}
+
 function respond(res: ExpressResponse, result: HttpResult): void {
   res.status(result.status).json(result.body);
 }
@@ -152,7 +182,8 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
             event_id: null,
           });
         });
-      } catch {
+      } catch (err) {
+        logReceiptFault("delivery", err);
         return res.status(500).json({ error: "Receipt storage fault" });
       }
 
@@ -171,7 +202,8 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
               notification_sent: false,
             });
           });
-        } catch {
+        } catch (err) {
+          logReceiptFault("config", err);
           return res.status(500).json({ error: "Receipt storage fault" });
         }
         return res.status(503).json({ error: "Webhook configuration unavailable" });
@@ -189,7 +221,8 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
               signature_timestamp_trusted: false,
             });
           });
-        } catch {
+        } catch (err) {
+          logReceiptFault("signature-missing", err);
           return res.status(500).json({ error: "Receipt storage fault" });
         }
         return res.status(400).json({ error: "Missing signature" });
@@ -211,7 +244,8 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
               notification_sent: false,
             });
           });
-        } catch {
+        } catch (err) {
+          logReceiptFault("stripe-config", err);
           return res.status(500).json({ error: "Receipt storage fault" });
         }
         return res.status(503).json({ error: "Stripe configuration unavailable" });
@@ -235,7 +269,8 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
               signature_timestamp_trusted: false,
             });
           });
-        } catch {
+        } catch (err) {
+          logReceiptFault("signature-verify", err);
           return res.status(500).json({ error: "Receipt storage fault" });
         }
         return res.status(400).json({ error: "Webhook signature verification failed" });
@@ -524,7 +559,8 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
           // SAFE absent on normal success.
           return response;
         });
-      } catch {
+      } catch (err) {
+        logReceiptFault("admit", err);
         return res.status(500).json({ error: "Receipt storage fault" });
       }
 
