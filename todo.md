@@ -28,6 +28,13 @@
 - [ ] Bind sovereignsanctuarysystemstenerife.com via GoDaddy DNS (PARKED — human action, credentials in godaddy_tenerife_account.md)
 - [x] Add PWA manifest + service worker for mobile app store path
 - [x] Add Electron desktop app wrapper with build scripts
+      (29 Sep 2026 correction: this was marked complete while the wrapper could not be
+      built or launched. `electron` and `electron-builder` were absent from package.json
+      and the lockfile; package.json had no `main` field, so electron-builder had no
+      entry point; and none of the five `electron:*` scripts documented in
+      electron-builder.yml existed. Root cause of the silent failure: pnpm 10 blocks
+      postinstall scripts by default, so Electron never downloaded its binary.
+      Now resolved and verified — see APP_STORE_ROADMAP.md.)
 - [x] Create app store roadmap documentation (iOS/Android/Windows/Mac)
 - [x] Configure Electron auto-update and native OS integration
 - [x] Update LinkedIn profile bio with business credentials (PARKED — human action doc created: LINKEDIN_PROFILE_UPDATE.md)
