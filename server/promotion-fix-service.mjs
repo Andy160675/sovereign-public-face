@@ -102,6 +102,10 @@ export function createPromotionService({store, model, stripe, env=process.env, n
     const order = await authenticate(value);
     if (order.verification.rehearsalOnly === true) fail(409,'REHEARSAL_ONLY','Synthetic rehearsal orders cannot open payment checkout.');
     if (order.status === 'PAID') fail(409,'ALREADY_PAID','This order is already unlocked. Retrieve its result.');
+    const production = env.VERCEL_ENV === 'production' || (env.VERCEL_ENV !== 'preview' && env.NODE_ENV === 'production');
+    if (production && env.PROMOTION_CHECKOUT_STATE !== 'ENABLED') {
+      fail(503,'CHECKOUT_ON_HOLD','Checkout is temporarily unavailable. Your prepared result is saved; no charge was created.');
+    }
     if (order.checkout_session_id) {
       const existing = await stripe.retrieve(order.checkout_session_id);
       verifySession(order, existing);

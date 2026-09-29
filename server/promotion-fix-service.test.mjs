@@ -30,6 +30,45 @@ test('overlong input is rejected before model or payment',async()=>{const f=setu
 test('an unconfirmed source is rejected before model or payment',async()=>{const f=setup();await assert.rejects(f.service.prepare({...f.input,factsConfirmed:false},f.context),e=>e.status===400);assert.equal(f.counts().generated,0);});
 test('unpaid and fabricated return query cannot unlock output',async()=>{const f=setup();const o=await f.service.prepare(f.input,f.context);await f.service.checkout(o);const r=await f.service.result({...o,sessionId:'cs_test_'+o.orderId});assert.equal(r.status,'READY_UNPAID');assert.equal('result' in r,false);await assert.rejects(f.service.result({...o,sessionId:'cs_fake'}),e=>e.status===400);});
 test('wrong token cannot read or create checkout',async()=>{const f=setup();const o=await f.service.prepare(f.input,f.context);await assert.rejects(f.service.result({...o,accessToken:'x'.repeat(43)}),e=>e.status===404);await assert.rejects(f.service.checkout({...o,accessToken:'x'.repeat(43)}),e=>e.status===404);});
+for(const state of [undefined,'HOLD','enabled',' ENABLED','TRUE'])test(`production checkout fails closed for state ${String(state)}`,async()=>{
+  const f=setup({env:{VERCEL_ENV:'production',PROMOTION_CHECKOUT_STATE:state}});
+  const o=await f.service.prepare(f.input,f.context);
+  await assert.rejects(f.service.checkout(o),e=>e.status===503&&e.code==='CHECKOUT_ON_HOLD');
+  assert.equal(f.counts().checkouts,0);
+  assert.equal(f.orders.get(o.orderId).checkout_session_id,null);
+});
+test('NODE_ENV-only production also fails closed',async()=>{
+  const f=setup({env:{VERCEL_ENV:undefined,NODE_ENV:'production'}});
+  const o=await f.service.prepare(f.input,f.context);
+  await assert.rejects(f.service.checkout(o),e=>e.status===503&&e.code==='CHECKOUT_ON_HOLD');
+  assert.equal(f.counts().checkouts,0);
+});
+test('an explicit Vercel preview remains usable when NODE_ENV is production',async()=>{
+  const f=setup({env:{VERCEL_ENV:'preview',NODE_ENV:'production'}});
+  const o=await f.service.prepare(f.input,f.context);
+  const checkout=await f.service.checkout(o);
+  assert.equal(checkout.status,'READY_UNPAID');
+  assert.equal(f.counts().checkouts,1);
+});
+test('production checkout can be explicitly enabled after authority is resolved',async()=>{
+  const f=setup({env:{VERCEL_ENV:'production',PROMOTION_CHECKOUT_STATE:'ENABLED'}});
+  const o=await f.service.prepare(f.input,f.context);
+  const checkout=await f.service.checkout(o);
+  assert.equal(checkout.status,'READY_UNPAID');
+  assert.equal(f.counts().checkouts,1);
+});
+test('production hold blocks an existing unpaid checkout before Stripe retrieval',async()=>{
+  const f=setup();const o=await f.service.prepare(f.input,f.context);await f.service.checkout(o);
+  f.env.VERCEL_ENV='production';f.env.PROMOTION_CHECKOUT_STATE='HOLD';
+  await assert.rejects(f.service.checkout(o),e=>e.code==='CHECKOUT_ON_HOLD');
+  assert.equal(f.retrieves(),0);
+});
+test('production hold does not block verified paid-result redelivery',async()=>{
+  const f=setup({env:{VERCEL_ENV:'production',PROMOTION_CHECKOUT_STATE:'ENABLED'}});
+  const o=await f.service.prepare(f.input,f.context);await f.service.checkout(o);f.paid();
+  const paid=await f.service.result(o);f.env.PROMOTION_CHECKOUT_STATE='HOLD';
+  assert.deepEqual(await f.service.result(o),paid);
+});
 test('verified exact paid session unlocks once and supports redelivery',async()=>{const f=setup();const o=await f.service.prepare(f.input,f.context);await f.service.checkout(o);f.paid();const a=await f.service.result(o),b=await f.service.result(o);assert.equal(a.status,'PAID');assert.equal(a.paymentKind,'STRIPE');assert.deepEqual(a.result,b.result);assert.deepEqual(a.receipt,b.receipt);assert.equal(f.counts().checkouts,1);});
 test('paid session reconciles from a trusted callback without a browser return or access token',async()=>{
   const f=setup();const o=await f.service.prepare(f.input,f.context);await f.service.checkout(o);f.paid();
