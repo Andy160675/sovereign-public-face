@@ -112,6 +112,11 @@ const RECEIPT_FAULT_CODES = new Set([
   "RECEIPT_CHAIN_INVALID",
   "EVENT_RECORD_EVIDENCE_MISMATCH",
   "MODULE_NOT_FOUND",
+  // Thrown by defaultJournal() above when STRIPE_RECEIPT_DATABASE_URL is unset.
+  // A deployment-configuration fault is precisely what this log exists to name,
+  // so omitting it left the one journal fault defined in this file reported as a
+  // bare `cause=Error` — the masking this change was written to remove.
+  "STRIPE_RECEIPT_JOURNAL_UNCONFIGURED",
 ]);
 
 // A receipt write failed. The caller still answers 500 so Stripe retries; this

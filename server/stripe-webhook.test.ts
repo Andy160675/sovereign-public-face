@@ -495,3 +495,122 @@ describe("signed payment and refund event observations (RECORDED_ONLY)", () => {
     expect(verifyChain(journal.chain).valid).toBe(true);
   });
 });
+
+/**
+ * The diagnostic log is a contract an operator reads to tell one deployment
+ * fault from another, so it is asserted directly. The suite above proves only
+ * that a fault answers 500, which would still pass if a stage label regressed,
+ * a known code were masked as `Error`, or an unknown error's message leaked.
+ */
+describe("receipt fault diagnostics", () => {
+  const faultLines = (spy: ReturnType<typeof vi.spyOn>) =>
+    spy.mock.calls
+      .map((args) => String(args[0]))
+      .filter((line) => line.includes("receipt fault"));
+
+  /** Boot with a journal whose first transact throws `err`. */
+  async function bootThrowing(err: unknown) {
+    const base = createMemoryReceiptJournal();
+    await boot({
+      ...base,
+      async transact() {
+        throw err;
+      },
+    } as MemoryReceiptJournal);
+  }
+
+  const codeError = (code: string) =>
+    Object.assign(new Error("some message that must not be logged"), { code });
+
+  it.each([
+    // A known code carried on `.code` is named.
+    [codeError("MODULE_NOT_FOUND"), "MODULE_NOT_FOUND"],
+    [codeError("JARUS_RUNTIME_PIN_MISMATCH"), "JARUS_RUNTIME_PIN_MISMATCH"],
+    // A known code thrown as the message is also named. This is the shape
+    // defaultJournal() uses when STRIPE_RECEIPT_DATABASE_URL is unset.
+    [new Error("STRIPE_RECEIPT_JOURNAL_UNCONFIGURED"), "STRIPE_RECEIPT_JOURNAL_UNCONFIGURED"],
+    [new Error("CONNECTOR_NOT_PROVISIONED"), "CONNECTOR_NOT_PROVISIONED"],
+    // An unrecognised error contributes its class name only.
+    [new Error("boom"), "Error"],
+    [new TypeError("boom"), "TypeError"],
+    // A non-Error throw is not assumed to have a readable shape.
+    ["a bare string", "unknown"],
+  ])("names the cause of %#", async (thrown, expected) => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await bootThrowing(thrown);
+      expect((await post(event())).status).toBe(500);
+      expect(faultLines(spy)).toContain(
+        `[Stripe Webhook] receipt fault stage=delivery cause=${expected}`,
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("never logs an unrecognised error's message", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await bootThrowing(new Error("customer@example.test wants a refund"));
+      expect((await post(event())).status).toBe(500);
+      const lines = faultLines(spy);
+      expect(lines).toContain("[Stripe Webhook] receipt fault stage=delivery cause=Error");
+      expect(lines.join("\n")).not.toContain("customer@example.test");
+      expect(lines.join("\n")).not.toContain("refund");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("an unknown code on .code does not smuggle itself into the log", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await bootThrowing(codeError("ECONNREFUSED 10.0.0.4:3306"));
+      expect((await post(event())).status).toBe(500);
+      const lines = faultLines(spy).join("\n");
+      expect(lines).toContain("cause=Error");
+      expect(lines).not.toContain("10.0.0.4");
+      expect(lines).not.toContain("ECONNREFUSED");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  /**
+   * Which stage fires depends on the environment: without a resolvable receipt
+   * engine the delivery write fails before admission is ever reached, so this
+   * asserts the line's SHAPE against the six labels the handler can emit rather
+   * than pinning one stage. A regressed or invented label fails here; so does a
+   * leaked message.
+   */
+  it("emits a well-formed line naming one of the handler's six stages", async () => {
+    const STAGES = [
+      "delivery",
+      "config",
+      "signature-missing",
+      "stripe-config",
+      "signature-verify",
+      "admit",
+    ];
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      journal.state.failKind = "stripe.execution";
+      expect((await post(event())).status).toBe(500);
+      const lines = faultLines(spy);
+      expect(lines.length).toBeGreaterThan(0);
+      for (const line of lines) {
+        const m = /^\[Stripe Webhook\] receipt fault stage=(\S+) cause=(\S+)$/.exec(line);
+        expect(m, `malformed fault line: ${line}`).not.toBeNull();
+        expect(STAGES).toContain(m![1]);
+        // Either a fixed allowlisted code or an error class name — never free text.
+        expect(m![2]).toMatch(/^[A-Za-z][A-Za-z0-9_]*$/);
+      }
+      // The injected write fault is an unrecognised error, so its message must
+      // not reach the log under any stage.
+      expect(lines.join("\n")).not.toContain("injected write fault");
+    } finally {
+      journal.state.failKind = "";
+      spy.mockRestore();
+    }
+  });
+});
