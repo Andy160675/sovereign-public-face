@@ -1,5 +1,4 @@
-import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
+import { getSessionCookieOptions, sessionCookieNamesToClear } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { PRODUCTS, getProductById } from "./products";
@@ -63,7 +62,13 @@ export const appRouter = router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      // Both the prefixed name and the legacy one. A user still holding a
+      // pre-prefix cookie is signed out properly rather than left carrying a
+      // cookie the server no longer reads; clearing one that was never set is
+      // harmless. Deletion matches on name and path, so these options suffice.
+      for (const name of sessionCookieNamesToClear(ctx.req)) {
+        ctx.res.clearCookie(name, { ...cookieOptions, maxAge: -1 });
+      }
       return {
         success: true,
       } as const;

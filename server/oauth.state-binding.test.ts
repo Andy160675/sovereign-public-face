@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import express from "express";
+import { HOST_COOKIE_NAME } from "../shared/const";
 import {
   STATE_COOKIE_NAME,
   createNonce,
@@ -176,7 +177,11 @@ describe("a genuine sign-in still completes", () => {
     expect(exchangeCodeForToken).toHaveBeenCalledWith("genuine-code", state);
     expect(result.status).toBe(302);
     expect(result.location).toBe("/");
-    expect(result.setCookie.some(c => c.startsWith("app_session_id="))).toBe(true);
+    // NODE_ENV is "production" here, so the session cookie carries the
+    // `__Host-` prefix. Pinning the prefixed name rather than a bare substring:
+    // `startsWith("app_session_id=")` would silently stop matching the moment
+    // the prefix landed, which is exactly what it did.
+    expect(result.setCookie.some(c => c.startsWith(`${HOST_COOKIE_NAME}=`))).toBe(true);
   });
 });
 

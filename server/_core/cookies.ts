@@ -1,3 +1,4 @@
+import { COOKIE_NAME, HOST_COOKIE_NAME } from "@shared/const";
 import type { CookieOptions, Request } from "express";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
@@ -43,8 +44,12 @@ export function getSessionCookieOptions(
   // meant that any deployment where `x-forwarded-proto` was absent or rewritten
   // served the session cookie over plaintext.
   const isLocal = LOCAL_HOSTS.has(req.hostname) || isIpAddress(req.hostname ?? "");
-  const secure =
-    process.env.NODE_ENV === "production" ? true : isSecureRequest(req) || !isLocal;
+
+  // A `__Host-` cookie is REFUSED by the browser unless it is Secure, so the
+  // name and this flag must agree. They are derived from the same predicate for
+  // that reason: a `__Host-` name paired with `secure: false` is dropped
+  // silently, which presents as random logouts rather than as an error.
+  const secure = usesHostPrefix(req) ? true : isSecureRequest(req) || !isLocal;
 
   return {
     httpOnly: true,
@@ -72,4 +77,48 @@ export function getSessionCookieOptions(
     sameSite: "lax",
     secure,
   };
+}
+
+/**
+ * Whether this request can carry a `__Host-` session cookie.
+ *
+ * Production always can, and always must. Outside production the prefix is used
+ * whenever the request actually arrived over TLS, and skipped on plain-http
+ * localhost — where a browser would refuse a `Secure` cookie's prefixed form and
+ * the developer would simply never stay signed in.
+ */
+export function usesHostPrefix(req: Request): boolean {
+  if (process.env.NODE_ENV === "production") return true;
+  return isSecureRequest(req);
+}
+
+/**
+ * The session cookie's name AND its options together.
+ *
+ * Returned as one value on purpose. The `__Host-` prefix imposes three
+ * conditions — `Secure`, `Path=/`, no `Domain` — and a name that claims the
+ * prefix while breaking any of them is discarded by the browser without an
+ * error. Handing callers the pair makes that drift impossible; two separate
+ * helpers would let a later edit change one and not the other.
+ */
+export function getSessionCookie(req: Request): {
+  name: string;
+  options: Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure">;
+} {
+  return {
+    name: usesHostPrefix(req) ? HOST_COOKIE_NAME : COOKIE_NAME,
+    options: getSessionCookieOptions(req),
+  };
+}
+
+/**
+ * Names to clear on sign-out: the one in use, plus the legacy name.
+ *
+ * Clearing both means a user still holding a pre-prefix cookie is signed out
+ * properly instead of being left with a cookie the server no longer reads.
+ * Clearing a cookie that was never set is harmless.
+ */
+export function sessionCookieNamesToClear(req: Request): string[] {
+  const { name } = getSessionCookie(req);
+  return name === COOKIE_NAME ? [COOKIE_NAME] : [name, COOKIE_NAME];
 }

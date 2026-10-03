@@ -1,4 +1,4 @@
-import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { AXIOS_TIMEOUT_MS, COOKIE_NAME, HOST_COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
@@ -272,7 +272,18 @@ class SDKServer {
   async authenticateRequest(req: Request): Promise<User> {
     // Regular authentication flow
     const cookies = this.parseCookies(req.headers.cookie);
-    const sessionCookie = cookies.get(COOKIE_NAME);
+    // `__Host-` first, and in production ONLY.
+    //
+    // Accepting the unprefixed name in production would keep the cookie-tossing
+    // attack alive for anyone not currently signed in: a sibling `*.manus.space`
+    // host plants `app_session_id` with `Domain=.manus.space`, the victim has no
+    // `__Host-` cookie of their own, and the planted one is honoured — which is
+    // the forced-login half of the attack and most of what it is worth. So there
+    // is no production fallback. Outside production the legacy name is still
+    // read, because plain-http localhost cannot hold a `__Host-` cookie.
+    const sessionCookie =
+      cookies.get(HOST_COOKIE_NAME) ??
+      (process.env.NODE_ENV === "production" ? undefined : cookies.get(COOKIE_NAME));
     const session = await this.verifySession(sessionCookie);
 
     if (!session) {

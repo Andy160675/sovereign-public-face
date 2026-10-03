@@ -1,8 +1,8 @@
-import { COOKIE_NAME, SESSION_TTL_MS } from "@shared/const";
+import { SESSION_TTL_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import { parse as parseCookieHeader } from "cookie";
 import * as db from "../db";
-import { getSessionCookieOptions } from "./cookies";
+import { getSessionCookie } from "./cookies";
 import { ENV } from "./env";
 import {
   STATE_COOKIE_NAME,
@@ -152,8 +152,10 @@ export function registerOAuthRoutes(app: Express) {
         expiresInMs: SESSION_TTL_MS,
       });
 
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: SESSION_TTL_MS });
+      // Name and options come from one call so the `__Host-` prefix and the
+      // Secure flag it requires cannot drift apart.
+      const session = getSessionCookie(req);
+      res.cookie(session.name, sessionToken, { ...session.options, maxAge: SESSION_TTL_MS });
 
       res.redirect(302, "/");
     } catch (error) {
