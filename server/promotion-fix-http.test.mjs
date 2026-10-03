@@ -80,3 +80,95 @@ test('webhook returns retryable failure when payment reconciliation fails',async
     assert.doesNotMatch(await response.text(),/private-store-detail/);
   } finally { await new Promise(resolve=>server.close(resolve)); }
 });
+
+/**
+ * The envelope rate limit.
+ *
+ * `prepare` already had an hourly per-IP limit inside the service, enforced
+ * against Neon, because it spends two paid model calls. `checkout`, `result` and
+ * `simulate` had none — so a caller could drive store reads and Stripe
+ * `retrieve` calls without any ceiling. These tests pin the envelope budget that
+ * now covers all four, and pin that it fails OPEN, since a limiter that fails
+ * closed turns a Redis blip into a site outage.
+ *
+ * `limit` is injected, so nothing here reaches Upstash.
+ */
+async function hostedWithLimit(limit, service, run) {
+  const server=createServer(createHandler({env,service,limit}));
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  const base=`http://127.0.0.1:${server.address().port}`;
+  try { await run((body,headers={})=>fetch(base,{method:'POST',headers:{'content-type':'application/json',...headers},body:JSON.stringify(body)})); }
+  finally { await new Promise(resolve=>server.close(resolve)); }
+}
+
+test('envelope rate limit refuses over-budget callers on every action, before any service call',async()=>{
+  const calls=[];
+  const service=new Proxy({},{get:(_,name)=>async()=>{calls.push(name);return {};}});
+  const limit=async()=>({allowed:false,retryAfterSeconds:17});
+  await hostedWithLimit(limit,service,async request=>{
+    for (const action of ['prepare','checkout','result','simulate']) {
+      const response=await request({action},{origin:'https://example.test','x-vercel-forwarded-for':'203.0.113.9'});
+      assert.equal(response.status,429,`${action} was not limited`);
+      assert.equal(response.headers.get('retry-after'),'17');
+      assert.equal((await response.json()).error.code,'RATE_LIMITED');
+    }
+    // The point of an envelope limit is that the expensive work never starts.
+    assert.deepEqual(calls,[]);
+  });
+});
+
+test('envelope rate limit is keyed on the trusted platform address, not a client header',async()=>{
+  const keys=[];
+  const limit=async(prefix,requests,key)=>{keys.push({prefix,requests,key});return {allowed:true,retryAfterSeconds:0};};
+  await hostedWithLimit(limit,{async prepare(){return {status:'READY_UNPAID'};}},async request=>{
+    const response=await request({action:'prepare'},{
+      origin:'https://example.test',
+      'x-vercel-forwarded-for':'203.0.113.9',
+      // Forged, and must be ignored: trusting it would let an attacker evade
+      // their own budget and exhaust a victim's.
+      'x-forwarded-for':'198.51.100.200',
+    });
+    assert.equal(response.status,200);
+  });
+  assert.equal(keys.length,1);
+  assert.equal(keys[0].prefix,'promotion-fix');
+  assert.equal(keys[0].key,'promotion-ip:203.0.113.9');
+  assert.ok(keys[0].requests>0);
+});
+
+test('envelope rate limit runs only after the cheap guards, so junk never touches the store',async()=>{
+  let limitCalls=0;
+  const limit=async()=>{limitCalls++;return {allowed:true,retryAfterSeconds:0};};
+  await hostedWithLimit(limit,{async prepare(){return {};}},async request=>{
+    // Wrong origin and unknown action are rejected without spending a Redis
+    // round trip; each one would otherwise be a free way to bill the store.
+    assert.equal((await request({action:'prepare'},{origin:'https://attacker.test'})).status,403);
+    assert.equal((await request({action:'delete'},{origin:'https://example.test'})).status,400);
+    assert.equal(limitCalls,0);
+  });
+});
+
+test('envelope rate limit failing open keeps the endpoint serving',async()=>{
+  // A limiter that fails closed would refuse every customer over a Redis blip,
+  // which is worse than a brief unthrottled window. `consume` swallows store
+  // errors itself; this pins that an outright BROKEN limiter is survivable too.
+  //
+  // The first version of this test asserted 503 and called that failing open.
+  // It was not: 503 is the customer being refused. The handler now catches the
+  // limiter's own throw, so the assertion is 200 — the request is served.
+  const errors=[];
+  const original=console.error;
+  console.error=(...args)=>errors.push(args.join(' '));
+  try {
+    const limit=async()=>{throw Error('private-store-detail');};
+    await hostedWithLimit(limit,{async prepare(){return {status:'READY_UNPAID'};}},async request=>{
+      const response=await request({action:'prepare'},{origin:'https://example.test','x-vercel-forwarded-for':'203.0.113.9'});
+      assert.equal(response.status,200);
+      const body=await response.text();
+      assert.deepEqual(JSON.parse(body),{status:'READY_UNPAID'});
+      assert.doesNotMatch(body,/private-store-detail/);
+    });
+  } finally { console.error=original; }
+  // Silent degradation would mean nobody learns the limiter stopped working.
+  assert.ok(errors.some(line=>/limiter failed/.test(line)),'the failure was not logged');
+});
