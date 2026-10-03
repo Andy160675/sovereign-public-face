@@ -7,6 +7,7 @@ import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
+import { decodeStateRedirectUri } from "./oauthState";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
@@ -38,9 +39,21 @@ class OAuthService {
     }
   }
 
+  /**
+   * Recover the redirect URI the authorization request used.
+   *
+   * `state` now carries a CSRF nonce alongside the redirect URI (see
+   * `_core/oauthState.ts`), so it is no longer just `atob(redirectUri)`. The
+   * shared decoder understands both the structured form and the legacy plain
+   * one, which keeps a sign-in that started against the previous build able to
+   * finish its exchange.
+   *
+   * Tolerance here is safe: this decides only which redirect URI to send to the
+   * OAuth server. Whether the callback is trusted at all is decided separately,
+   * by the nonce comparison in the callback handler, which is NOT tolerant.
+   */
   private decodeState(state: string): string {
-    const redirectUri = atob(state);
-    return redirectUri;
+    return decodeStateRedirectUri(state);
   }
 
   async getTokenByCode(

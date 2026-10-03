@@ -6,6 +6,7 @@ import { PRODUCTS, getProductById } from "./products";
 import { z } from "zod";
 import Stripe from "stripe";
 import { TRPCError } from "@trpc/server";
+import { resolvePublicOrigin } from "./_core/publicOrigin";
 
 /**
  * Built on first use, not at import time.
@@ -46,88 +47,15 @@ function getStripe(): Stripe {
  * it is a full URL including a path, so the result was a mangled URL built from
  * whatever the caller sent.
  *
- * The return URL is OUR origin, so it is read from configuration and never from
- * the request. This mirrors the allowlist `api/promotion-fix.js` already applies
- * (`PROMOTION_PUBLIC_ORIGIN` + a `VERCEL_URL` preview origin); the same env var
- * is honoured here so one deployment does not need two sources of truth.
- */
-/**
- * A configured origin is only usable if it really is a bare origin.
+ * The implementation lives in `_core/publicOrigin.ts` because the OAuth
+ * redirect URI needs the same answer. Two code paths with their own notion of
+ * the same env var is how one of them ends up weaker — which is exactly what
+ * happened between the old checkout code and `api/promotion-fix.js`.
  *
- * Stripping a trailing slash was not enough. `api/promotion-fix.js` delegates to
- * `server/promotion-fix-service.mjs`, which rejects a configured value outright
- * unless it is https with no userinfo, path, query or fragment — so claiming to
- * "mirror" that allowlist while accepting `http://evil.test` or
- * `https://a@evil.test` was a weaker control wearing the same name. Those values
- * would have become the checkout return origin, with CHECKOUT_SESSION_ID
- * attached.
- *
- * `http://localhost` is exempt from the https requirement, and only ever added
- * outside production.
+ * Re-exported under the original name so existing callers and tests are
+ * unaffected.
  */
-function normaliseConfiguredOrigin(value: string, allowHttpLocalhost = false): string | null {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    return null;
-  }
-
-  const isLocalhost = url.hostname === "localhost" || url.hostname === "127.0.0.1";
-  const schemeOk = url.protocol === "https:" || (allowHttpLocalhost && url.protocol === "http:" && isLocalhost);
-
-  if (!schemeOk) return null;
-  if (url.username || url.password) return null;
-  if (url.search || url.hash) return null;
-  if (url.pathname !== "/" && url.pathname !== "") return null;
-
-  return url.origin;
-}
-
-function allowedReturnOrigins(env: NodeJS.ProcessEnv = process.env): string[] {
-  const allowHttpLocalhost = env.NODE_ENV !== "production";
-  const configured = [env.PUBLIC_BASE_URL, env.PROMOTION_PUBLIC_ORIGIN]
-    .filter((value): value is string => typeof value === "string" && value.length > 0)
-    .map(value => normaliseConfiguredOrigin(value, allowHttpLocalhost))
-    .filter((value): value is string => value !== null);
-
-  // Same shape and the same hostname guard as api/promotion-fix.js.
-  if (
-    env.VERCEL_ENV === "preview" &&
-    typeof env.VERCEL_URL === "string" &&
-    /^[a-zA-Z0-9.-]+$/.test(env.VERCEL_URL)
-  ) {
-    configured.push(`https://${env.VERCEL_URL}`);
-  }
-
-  if (allowHttpLocalhost) configured.push("http://localhost:3000");
-
-  // Array.from rather than [...set]: this tsconfig targets below es2015, where
-  // spreading a Set needs --downlevelIteration. Loosening the project's compiler
-  // settings to dedupe a three-element list would be the wrong trade.
-  return Array.from(new Set(configured));
-}
-
-/**
- * Pick the return origin. The request's `Origin` can only SELECT among origins
- * we already trust — it can never introduce one. With nothing configured this
- * throws rather than guessing: a checkout that silently returns customers to the
- * wrong host is worse than a checkout that refuses to start.
- */
-export function resolveReturnOrigin(
-  requestOrigin: string | undefined,
-  env: NodeJS.ProcessEnv = process.env,
-): string {
-  const allowed = allowedReturnOrigins(env);
-  if (allowed.length === 0) {
-    throw new Error(
-      "No checkout return origin is configured. Set PUBLIC_BASE_URL (or PROMOTION_PUBLIC_ORIGIN) " +
-        "to this deployment's public origin.",
-    );
-  }
-  const normalised = requestOrigin?.replace(/\/+$/, "");
-  return normalised && allowed.includes(normalised) ? normalised : allowed[0];
-}
+export { resolvePublicOrigin as resolveReturnOrigin };
 
 export const appRouter = router({
   system: systemRouter,
@@ -199,7 +127,7 @@ export const appRouter = router({
         let origin: string;
         let stripe: Stripe;
         try {
-          origin = resolveReturnOrigin(ctx.req.headers.origin);
+          origin = resolvePublicOrigin(ctx.req.headers.origin);
           stripe = getStripe();
         } catch (error) {
           console.error(
