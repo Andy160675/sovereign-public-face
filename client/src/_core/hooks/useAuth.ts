@@ -8,10 +8,26 @@ type UseAuthOptions = {
   redirectPath?: string;
 };
 
+/**
+ * Key this hook used to write the signed-in user's record to. The write is gone
+ * (see the note in `state` below), but removing it does not clear the copies
+ * already sitting in users' browsers — so clear it once on mount.
+ */
+const LEGACY_USER_INFO_KEY = "manus-runtime-user-info";
+
 export function useAuth(options?: UseAuthOptions) {
   const { redirectOnUnauthenticated = false, redirectPath = getLoginUrl() } =
     options ?? {};
   const utils = trpc.useUtils();
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem(LEGACY_USER_INFO_KEY);
+    } catch {
+      // Private mode and blocked site-data both throw on access. Nothing to do:
+      // if the store is unreadable there is no stale copy to remove.
+    }
+  }, []);
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
@@ -42,10 +58,18 @@ export function useAuth(options?: UseAuthOptions) {
   }, [logoutMutation, utils]);
 
   const state = useMemo(() => {
-    localStorage.setItem(
-      "manus-runtime-user-info",
-      JSON.stringify(meQuery.data)
-    );
+    // The signed-in user's record (id, email, name, role) used to be written to
+    // localStorage under "manus-runtime-user-info" on every render.
+    //
+    // Nothing read it — it was a mirror of `meQuery.data`, which is already the
+    // source of truth here. What it did do is put the account's email and role
+    // somewhere any injected script can read, and leave them there: the write
+    // happened inside a `useMemo`, and on sign-out it stored the string "null"
+    // rather than clearing the key, so a shared browser kept the last user's
+    // details until something overwrote them.
+    //
+    // Session identity itself is in an httpOnly cookie and was never here, so
+    // removing this costs nothing and takes the readable copy away.
     return {
       user: meQuery.data ?? null,
       loading: meQuery.isLoading || logoutMutation.isPending,

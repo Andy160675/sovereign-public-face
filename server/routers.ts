@@ -6,9 +6,92 @@ import { PRODUCTS, getProductById } from "./products";
 import { z } from "zod";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-02-25.clover",
-});
+/**
+ * Built on first use, not at import time.
+ *
+ * This was `new Stripe(process.env.STRIPE_SECRET_KEY || "", …)` at module
+ * scope. The `|| ""` could not make that safe: the Stripe constructor rejects an
+ * empty key, so importing this module without the env var threw
+ * "Neither apiKey nor config.authenticator provided" — a message that names
+ * Stripe's internals rather than the variable an operator has to set, and which
+ * took down every route in the router, including the ones that never touch
+ * Stripe, plus any test that merely imports it.
+ *
+ * Deferring construction keeps the failure where it belongs: the checkout call
+ * fails, loudly and by name, and nothing else does.
+ */
+let stripeClient: Stripe | null = null;
+
+function getStripe(): Stripe {
+  if (stripeClient) return stripeClient;
+
+  const apiKey = process.env.STRIPE_SECRET_KEY;
+  if (!apiKey) {
+    throw new Error("STRIPE_SECRET_KEY is not set; checkout cannot be created.");
+  }
+
+  stripeClient = new Stripe(apiKey, { apiVersion: "2026-02-25.clover" });
+  return stripeClient;
+}
+
+/**
+ * Where checkout is allowed to send the customer back to.
+ *
+ * `success_url` and `cancel_url` used to be built from `req.headers.origin`,
+ * falling back to `req.headers.referer`. Both are attacker-controlled: a request
+ * carrying `Origin: https://evil.example` produced a Stripe session that
+ * redirected the customer to that host after paying, with the real
+ * `CHECKOUT_SESSION_ID` in the query string. Using `referer` was worse still —
+ * it is a full URL including a path, so the result was a mangled URL built from
+ * whatever the caller sent.
+ *
+ * The return URL is OUR origin, so it is read from configuration and never from
+ * the request. This mirrors the allowlist `api/promotion-fix.js` already applies
+ * (`PROMOTION_PUBLIC_ORIGIN` + a `VERCEL_URL` preview origin); the same env var
+ * is honoured here so one deployment does not need two sources of truth.
+ */
+function allowedReturnOrigins(env: NodeJS.ProcessEnv = process.env): string[] {
+  const configured = [env.PUBLIC_BASE_URL, env.PROMOTION_PUBLIC_ORIGIN]
+    .filter((value): value is string => typeof value === "string" && value.length > 0)
+    .map(value => value.replace(/\/+$/, ""));
+
+  // Same shape and the same hostname guard as api/promotion-fix.js.
+  if (
+    env.VERCEL_ENV === "preview" &&
+    typeof env.VERCEL_URL === "string" &&
+    /^[a-zA-Z0-9.-]+$/.test(env.VERCEL_URL)
+  ) {
+    configured.push(`https://${env.VERCEL_URL}`);
+  }
+
+  if (env.NODE_ENV !== "production") configured.push("http://localhost:3000");
+
+  // Array.from rather than [...set]: this tsconfig targets below es2015, where
+  // spreading a Set needs --downlevelIteration. Loosening the project's compiler
+  // settings to dedupe a three-element list would be the wrong trade.
+  return Array.from(new Set(configured));
+}
+
+/**
+ * Pick the return origin. The request's `Origin` can only SELECT among origins
+ * we already trust — it can never introduce one. With nothing configured this
+ * throws rather than guessing: a checkout that silently returns customers to the
+ * wrong host is worse than a checkout that refuses to start.
+ */
+export function resolveReturnOrigin(
+  requestOrigin: string | undefined,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const allowed = allowedReturnOrigins(env);
+  if (allowed.length === 0) {
+    throw new Error(
+      "No checkout return origin is configured. Set PUBLIC_BASE_URL (or PROMOTION_PUBLIC_ORIGIN) " +
+        "to this deployment's public origin.",
+    );
+  }
+  const normalised = requestOrigin?.replace(/\/+$/, "");
+  return normalised && allowed.includes(normalised) ? normalised : allowed[0];
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -68,7 +151,7 @@ export const appRouter = router({
           throw new Error(`Product not found: ${input.productId}`);
         }
 
-        const origin = ctx.req.headers.origin || ctx.req.headers.referer || "http://localhost:3000";
+        const origin = resolveReturnOrigin(ctx.req.headers.origin);
 
         const sessionParams: Stripe.Checkout.SessionCreateParams = {
           mode: product.mode === "subscription" ? "subscription" : "payment",
@@ -99,7 +182,7 @@ export const appRouter = router({
           cancel_url: `${origin}/checkout/cancel`,
         };
 
-        const session = await stripe.checkout.sessions.create(sessionParams);
+        const session = await getStripe().checkout.sessions.create(sessionParams);
         return { url: session.url };
       }),
   }),

@@ -39,10 +39,30 @@ export function getSessionCookieOptions(
   //       ? hostname
   //       : undefined;
 
+  // In production the cookie is always Secure. Deriving it only from the request
+  // meant that any deployment where `x-forwarded-proto` was absent or rewritten
+  // served the session cookie over plaintext.
+  const isLocal = LOCAL_HOSTS.has(req.hostname) || isIpAddress(req.hostname ?? "");
+  const secure =
+    process.env.NODE_ENV === "production" ? true : isSecureRequest(req) || !isLocal;
+
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
-    secure: isSecureRequest(req),
+    // `none` let every cross-site request carry the session cookie, which is the
+    // precondition for CSRF against the cookie-authenticated tRPC mutations.
+    //
+    // `lax` is correct here, and nothing is given up:
+    //   · every path already sends `X-Frame-Options: DENY`, so there is no
+    //     cross-site embedding that needed `none`;
+    //   · the OAuth return is `res.redirect(302, "/")` — a top-level GET
+    //     navigation, which `lax` does send the cookie on, so sign-in completes;
+    //   · the SPA's own tRPC calls are same-origin, so they are unaffected.
+    //
+    // `none` also *requires* `Secure`, so whenever the proxy headers read as
+    // http the browser dropped the cookie outright. `lax` removes that
+    // silent-logout failure mode too.
+    sameSite: "lax",
+    secure,
   };
 }

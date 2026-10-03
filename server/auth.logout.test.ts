@@ -54,7 +54,16 @@ describe("auth.logout", () => {
     expect(clearedCookies[0]?.options).toMatchObject({
       maxAge: -1,
       secure: true,
-      sameSite: "none",
+      // Was "none". That pinned a CSRF exposure as though it were an invariant:
+      // `none` makes every cross-site request carry the session cookie, and the
+      // tRPC mutations authenticate by cookie. Nothing needed it — every path
+      // sends `X-Frame-Options: DENY`, so the app is never framed cross-site,
+      // and the OAuth return is a top-level GET navigation, which `lax` does
+      // send the cookie on.
+      //
+      // The assertion is kept rather than dropped: pinned to the safe value it
+      // now fails if the attribute ever regresses to `none`.
+      sameSite: "lax",
       httpOnly: true,
       path: "/",
     });
