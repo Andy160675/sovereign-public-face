@@ -53,8 +53,15 @@ export function getSessionCookieOptions(
     // precondition for CSRF against the cookie-authenticated tRPC mutations.
     //
     // `lax` is correct here, and nothing is given up:
-    //   · every path already sends `X-Frame-Options: DENY`, so there is no
-    //     cross-site embedding that needed `none`;
+    //   · a Lax cookie is not sent on a cross-site iframe load at all, so
+    //     framing cannot reach an authenticated session whatever headers a host
+    //     does or does not send. An earlier version of this comment justified
+    //     the change with "every path already sends X-Frame-Options: DENY".
+    //     That is FALSE for the host that sets this cookie: those headers come
+    //     from vercel.json, while /api/trpc and /api/oauth are mounted on the
+    //     Express host in _core/index.ts, which sent no security headers at
+    //     all. The conclusion held; the reason given for it did not, so it is
+    //     corrected here rather than quietly kept.
     //   · the OAuth return is `res.redirect(302, "/")` — a top-level GET
     //     navigation, which `lax` does send the cookie on, so sign-in completes;
     //   · the SPA's own tRPC calls are same-origin, so they are unaffected.

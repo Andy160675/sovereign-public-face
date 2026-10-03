@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { createStripeWebhookApp } from "../createStripeWebhookApp";
+import { securityHeaders } from "./securityHeaders";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -32,6 +33,12 @@ async function startServer() {
   // Webhook-first factory: raw body registered BEFORE express.json(); no listen().
   const app = createStripeWebhookApp();
   const server = createServer(app);
+
+  // Before every route, including the static bundle and the webhook app's own
+  // paths. This host serves /api/trpc and /api/oauth — the session cookie,
+  // sign-in and checkout — and was sending no security headers at all; the
+  // vercel.json block only covers the static deployment.
+  app.use(securityHeaders());
 
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));

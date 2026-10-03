@@ -94,4 +94,51 @@ describe("resolveReturnOrigin", () => {
     const env = { NODE_ENV: "development" } as NodeJS.ProcessEnv;
     expect(resolveReturnOrigin("http://localhost:3000", env)).toBe("http://localhost:3000");
   });
+
+  /**
+   * A configured origin must be a bare origin, not merely a string that ends
+   * without a slash. `server/promotion-fix-service.mjs` already refuses anything
+   * else with a 503, and this code claims to mirror that allowlist — so an
+   * earlier version which only stripped trailing slashes was a weaker control
+   * wearing the same name. Each value below would otherwise have become the
+   * checkout return origin, with CHECKOUT_SESSION_ID attached.
+   */
+  describe("rejects a misconfigured origin instead of trusting it", () => {
+    const cases: Array<[string, string]> = [
+      ["plaintext http", "http://evil.test"],
+      ["userinfo", "https://a@evil.test"],
+      ["userinfo with password", "https://a:b@evil.test"],
+      ["a path", "https://evil.test/checkout"],
+      ["a query string", "https://evil.test/?next=x"],
+      ["a fragment", "https://evil.test/#x"],
+      ["not a URL at all", "evil.test"],
+      ["a non-http scheme", "javascript:alert(1)"],
+    ];
+
+    for (const [label, value] of cases) {
+      it(`${label}: this value is not usable as a return origin`, () => {
+        const env = { PUBLIC_BASE_URL: value, NODE_ENV: "production" } as NodeJS.ProcessEnv;
+        // Nothing valid remains configured, so it must fail closed rather than
+        // fall back to the bad value.
+        expect(() => resolveReturnOrigin(undefined, env)).toThrow(/return origin is configured/);
+      });
+    }
+
+    it("keeps the valid origin when one of the two variables is malformed", () => {
+      const env = {
+        PUBLIC_BASE_URL: "http://evil.test",
+        PROMOTION_PUBLIC_ORIGIN: "https://good.example",
+        NODE_ENV: "production",
+      } as NodeJS.ProcessEnv;
+      expect(resolveReturnOrigin("http://evil.test", env)).toBe("https://good.example");
+    });
+
+    it("normalises a configured origin with a port through URL parsing", () => {
+      const env = {
+        PUBLIC_BASE_URL: "https://good.example:8443/",
+        NODE_ENV: "production",
+      } as NodeJS.ProcessEnv;
+      expect(resolveReturnOrigin(undefined, env)).toBe("https://good.example:8443");
+    });
+  });
 });

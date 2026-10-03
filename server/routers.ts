@@ -5,6 +5,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { PRODUCTS, getProductById } from "./products";
 import { z } from "zod";
 import Stripe from "stripe";
+import { TRPCError } from "@trpc/server";
 
 /**
  * Built on first use, not at import time.
@@ -50,10 +51,45 @@ function getStripe(): Stripe {
  * (`PROMOTION_PUBLIC_ORIGIN` + a `VERCEL_URL` preview origin); the same env var
  * is honoured here so one deployment does not need two sources of truth.
  */
+/**
+ * A configured origin is only usable if it really is a bare origin.
+ *
+ * Stripping a trailing slash was not enough. `api/promotion-fix.js` delegates to
+ * `server/promotion-fix-service.mjs`, which rejects a configured value outright
+ * unless it is https with no userinfo, path, query or fragment — so claiming to
+ * "mirror" that allowlist while accepting `http://evil.test` or
+ * `https://a@evil.test` was a weaker control wearing the same name. Those values
+ * would have become the checkout return origin, with CHECKOUT_SESSION_ID
+ * attached.
+ *
+ * `http://localhost` is exempt from the https requirement, and only ever added
+ * outside production.
+ */
+function normaliseConfiguredOrigin(value: string, allowHttpLocalhost = false): string | null {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+
+  const isLocalhost = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  const schemeOk = url.protocol === "https:" || (allowHttpLocalhost && url.protocol === "http:" && isLocalhost);
+
+  if (!schemeOk) return null;
+  if (url.username || url.password) return null;
+  if (url.search || url.hash) return null;
+  if (url.pathname !== "/" && url.pathname !== "") return null;
+
+  return url.origin;
+}
+
 function allowedReturnOrigins(env: NodeJS.ProcessEnv = process.env): string[] {
+  const allowHttpLocalhost = env.NODE_ENV !== "production";
   const configured = [env.PUBLIC_BASE_URL, env.PROMOTION_PUBLIC_ORIGIN]
     .filter((value): value is string => typeof value === "string" && value.length > 0)
-    .map(value => value.replace(/\/+$/, ""));
+    .map(value => normaliseConfiguredOrigin(value, allowHttpLocalhost))
+    .filter((value): value is string => value !== null);
 
   // Same shape and the same hostname guard as api/promotion-fix.js.
   if (
@@ -64,7 +100,7 @@ function allowedReturnOrigins(env: NodeJS.ProcessEnv = process.env): string[] {
     configured.push(`https://${env.VERCEL_URL}`);
   }
 
-  if (env.NODE_ENV !== "production") configured.push("http://localhost:3000");
+  if (allowHttpLocalhost) configured.push("http://localhost:3000");
 
   // Array.from rather than [...set]: this tsconfig targets below es2015, where
   // spreading a Set needs --downlevelIteration. Loosening the project's compiler
@@ -148,10 +184,33 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const product = getProductById(input.productId);
         if (!product) {
-          throw new Error(`Product not found: ${input.productId}`);
+          throw new TRPCError({ code: "NOT_FOUND", message: "Unknown product." });
         }
 
-        const origin = resolveReturnOrigin(ctx.req.headers.origin);
+        // The two configuration faults below — no return origin, no Stripe key —
+        // must not reach the browser. tRPC does not redact error messages and no
+        // errorFormatter is configured, and the client renders them directly
+        // (`toast.error(error.message ...)` in Audit.tsx / Packs.tsx), so an
+        // unauthenticated-looking toast would otherwise name exactly which secret
+        // is missing. `server/stripe-webhook.ts` already answers the identical
+        // condition with a generic "Stripe configuration unavailable", and
+        // `api/promotion-fix.js` states the rule outright: only domain-safe
+        // messages go back. The precise cause is logged instead.
+        let origin: string;
+        let stripe: Stripe;
+        try {
+          origin = resolveReturnOrigin(ctx.req.headers.origin);
+          stripe = getStripe();
+        } catch (error) {
+          console.error(
+            "[checkout] configuration unavailable:",
+            error instanceof Error ? error.message : error,
+          );
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Checkout is temporarily unavailable. No payment was started.",
+          });
+        }
 
         const sessionParams: Stripe.Checkout.SessionCreateParams = {
           mode: product.mode === "subscription" ? "subscription" : "payment",
@@ -182,7 +241,7 @@ export const appRouter = router({
           cancel_url: `${origin}/checkout/cancel`,
         };
 
-        const session = await getStripe().checkout.sessions.create(sessionParams);
+        const session = await stripe.checkout.sessions.create(sessionParams);
         return { url: session.url };
       }),
   }),

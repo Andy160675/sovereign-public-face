@@ -61,12 +61,22 @@ export function useAuth(options?: UseAuthOptions) {
     // The signed-in user's record (id, email, name, role) used to be written to
     // localStorage under "manus-runtime-user-info" on every render.
     //
-    // Nothing read it — it was a mirror of `meQuery.data`, which is already the
-    // source of truth here. What it did do is put the account's email and role
-    // somewhere any injected script can read, and leave them there: the write
-    // happened inside a `useMemo`, and on sign-out it stored the string "null"
-    // rather than clearing the key, so a shared browser kept the last user's
-    // details until something overwrote them.
+    // It had exactly one consumer, and it was not this app: the Manus runtime
+    // inlined into the production bundle reads the key when it reports an error
+    // (`userInfo: localStorage.getItem("manus-runtime-user-info")` in
+    // vite-plugin-manus-runtime's runtime_dist). So removing the write does cost
+    // something real — error reports lose user attribution — and that trade is
+    // made deliberately rather than by accident.
+    //
+    // What the write cost instead: the account's email and role sat somewhere any
+    // injected script could read, and stayed there. It happened inside a
+    // `useMemo`, and on sign-out it stored the string "null" rather than clearing
+    // the key, so a shared browser kept the previous user's details until
+    // something overwrote them. Attribution on a crash report is not worth a
+    // readable copy of every signed-in user's identity.
+    //
+    // That runtime only reads the key, so it will not repopulate it, which is why
+    // clearing it once on mount is enough.
     //
     // Session identity itself is in an httpOnly cookie and was never here, so
     // removing this costs nothing and takes the readable copy away.

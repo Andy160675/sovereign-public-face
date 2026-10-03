@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
-    "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "vite build && node scripts/verify-csp-hashes.mjs && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
@@ -13,7 +13,8 @@
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "test:ci": "node scripts/ci-with-jarus-pin.mjs",
     "verify:public-client": "node scripts/verify-public-client-boundary.mjs",
-    "verify:public-bundle": "node scripts/verify-public-client-boundary.mjs --require-bundle"
+    "verify:public-bundle": "node scripts/verify-public-client-boundary.mjs --require-bundle",
+    "verify:csp": "node scripts/verify-csp-hashes.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
