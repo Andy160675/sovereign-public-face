@@ -266,3 +266,41 @@ describe("the real server/_core/index.ts has the order these tests assume", () =
     );
   });
 });
+
+describe("the production start script carries the trusted-proxy setting", () => {
+  /**
+   * `RATE_LIMIT_TRUSTED_PROXIES` is what makes the limiter do anything at all on
+   * the long-running host: without it the source address is the edge's, every
+   * caller keys the same, and the limiter correctly declines to meter rather
+   * than throttle the whole site through one bucket. So the value is not
+   * cosmetic — losing it silently disables rate limiting in production.
+   *
+   * It lives in the `start` script because the host's own environment is not in
+   * this repository. It is written as a default, not an override, so a value set
+   * on the host still wins.
+   */
+  it("defaults the hop count to 1 without overriding the host's own value", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const pkg = JSON.parse(
+      await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    );
+
+    expect(pkg.scripts.start).toContain(
+      "RATE_LIMIT_TRUSTED_PROXIES=${RATE_LIMIT_TRUSTED_PROXIES:-1}",
+    );
+    // A bare `RATE_LIMIT_TRUSTED_PROXIES=1` would clobber a host value of 2,
+    // silently mis-keying every bucket one hop too far to the right.
+    expect(pkg.scripts.start).not.toMatch(/RATE_LIMIT_TRUSTED_PROXIES=1(\s|$)/);
+  });
+
+  it("leaves local development on the socket address", async () => {
+    // Dev is directly exposed, so trusting a forwarded header there would make
+    // the key client-settable for no benefit.
+    const { readFile } = await import("node:fs/promises");
+    const pkg = JSON.parse(
+      await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    );
+
+    expect(pkg.scripts.dev).not.toContain("RATE_LIMIT_TRUSTED_PROXIES");
+  });
+});
