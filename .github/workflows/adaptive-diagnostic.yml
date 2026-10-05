@@ -1,0 +1,42 @@
+name: Adaptive diagnostic
+
+on:
+  pull_request:
+    paths:
+      - 'client/public/diagnostic/**'
+      - 'tools/diagnostic/**'
+      - 'tests/diagnostic/**'
+      - 'vercel.json'
+      - '.github/workflows/adaptive-diagnostic.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'client/public/diagnostic/**'
+      - 'tools/diagnostic/**'
+      - 'tests/diagnostic/**'
+      - 'vercel.json'
+      - '.github/workflows/adaptive-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # Existing repository pin
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # Existing repository pin
+        with:
+          node-version: 22
+      - name: Run deterministic routing, privacy and CRM tests
+        run: node --test tests/diagnostic/*.test.mjs
+      - name: Check shipped module syntax
+        run: |
+          node --check client/public/diagnostic/engine.mjs
+          node --check client/public/diagnostic/app.mjs
+          node --check tools/diagnostic/analyse-crm.mjs
