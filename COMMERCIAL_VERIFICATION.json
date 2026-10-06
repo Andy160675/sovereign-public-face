@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "1.0.0",
+  "baseCommit": "3f68886a60d48c34caf7722a47726b60c868cd66",
+  "scope": "commercial-controls amendment to acquisition PR18",
+  "authority": "NONE",
+  "independentReview": "NOT_PERFORMED",
+  "productionReleased": false,
+  "verification": {
+    "localNativeTests": {
+      "passed": 71,
+      "failed": 0,
+      "skipped": 0
+    },
+    "redBeforeImplementation": {
+      "failed": 53
+    },
+    "boundaryRegressionRed": {
+      "failed": 4
+    },
+    "lateInterruptionReceiptRed": {
+      "failed": 1
+    },
+    "cliSyntheticRun": "PASS",
+    "syntax": "PASS",
+    "legacyIntegrationTests": "AWAITING_HOSTED_CI",
+    "fullRepositoryLocalTest": "UNAVAILABLE: isolated feature snapshot, npm test ENOENT package.json; no full local test/build claim",
+    "ci": "NOT_YET_RUN_ON_UPLOADED_HEAD"
+  },
+  "files": [
+    {
+      "path": "tools/diagnostic/commercial-controls.mjs",
+      "bytes": 19648,
+      "sha256": "ca23ab1e95dab79c7a27a7bf6051d4e069213879f99f69f978d1c4095c311847",
+      "gitBlob": "fca646068a7ac8d53a90a4b0c71f2b9ed4ba200d"
+    },
+    {
+      "path": "tests/diagnostic/commercial-controls.test.mjs",
+      "bytes": 18046,
+      "sha256": "5059212c588376046a4ab23b19a93a273020d740c22fe1431df917d3345f5efd",
+      "gitBlob": "cc5251fe925c1cd9051fae48e45778074bbd86c3"
+    },
+    {
+      "path": "tests/diagnostic/commercial-cli.test.mjs",
+      "bytes": 2278,
+      "sha256": "5e897aeb7294c8b43a685eb789b65a96de5d75f07af1dabf3e969e3c234b9320",
+      "gitBlob": "d4d7b167291d1d5ba9f45e67224f25b035db8652"
+    },
+    {
+      "path": "tests/diagnostic/commercial-integration.test.mjs",
+      "bytes": 1933,
+      "sha256": "7aed5f8defdb12283068c1482c5970feca3defc689e39a4abad21c378773c5ed",
+      "gitBlob": "ffd1ffd02fb8b8eae4a39536526c52c9a4847734"
+    },
+    {
+      "path": "tests/diagnostic/fixtures/commercial.synthetic.json",
+      "bytes": 5943,
+      "sha256": "86f1fec22cb731b778a4c38d3d8f5516d21bd072c1be56e13f32c5169c6ac91d",
+      "gitBlob": "cbc33dc2a3b281217a693258b894aa8798393b97"
+    },
+    {
+      "path": "COMMERCIAL_CONTROLS.md",
+      "bytes": 12484,
+      "sha256": "06408332c4c99fc9fb7d578aff89cba28c326abb2735c15127c6e581e8bd353d",
+      "gitBlob": "7fee05c175c3b3c5fd1668be235f65ac517e5f4b"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-06-commercial-controls.md",
+      "bytes": 1822,
+      "sha256": "7854d6106823a50da0aa275c5de91f7fe8277d1eb7048b1673f30c5850a58743",
+      "gitBlob": "b17e299da8021add6abbf19b0898c06dcca96793"
+    }
+  ]
+}
