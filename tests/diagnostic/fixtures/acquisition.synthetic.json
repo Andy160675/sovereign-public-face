@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "1.0.0",
+  "cohort": {
+    "cohortId": "cohort_demo",
+    "campaignId": "campaign_demo",
+    "channel": "paid_ads",
+    "currency": "GBP",
+    "periodStart": "2026-01-01T00:00:00.000Z",
+    "periodEnd": "2026-01-31T00:00:00.000Z",
+    "asOf": "2026-02-07T00:00:00.000Z",
+    "trackingComplete": true,
+    "attributionWindowClosed": true
+  },
+  "traffic": {
+    "impressions": 10000,
+    "clicks": 100,
+    "adSpendMinor": 10000
+  },
+  "pages": [
+    {
+      "pageId": "page_a",
+      "businessId": "private_business_01",
+      "stage": "checkout_started",
+      "freeAccepted": true
+    },
+    {
+      "pageId": "page_b",
+      "businessId": "private_business_01",
+      "stage": "service_selected",
+      "freeAccepted": false
+    },
+    {
+      "pageId": "page_c",
+      "businessId": "private_business_02",
+      "stage": "visited",
+      "freeAccepted": true
+    }
+  ],
+  "payments": [
+    {
+      "paymentId": "private_payment_01",
+      "pageId": "page_a",
+      "currency": "GBP",
+      "status": "succeeded",
+      "evidenceKind": "provider_export",
+      "evidenceRef": "private_payment_evidence_01",
+      "amountMinor": 15000,
+      "refundMinor": 0,
+      "occurredAt": "2026-01-03T00:00:00.000Z"
+    },
+    {
+      "paymentId": "private_payment_02",
+      "pageId": "page_b",
+      "currency": "GBP",
+      "status": "succeeded",
+      "evidenceKind": "provider_export",
+      "evidenceRef": "private_payment_evidence_02",
+      "amountMinor": 15000,
+      "refundMinor": 0,
+      "occurredAt": "2026-01-04T00:00:00.000Z"
+    }
+  ],
+  "costs": [
+    {
+      "costId": "private_cost_01",
+      "pageId": "page_a",
+      "category": "page_creation",
+      "currency": "GBP",
+      "amountMinor": 1000
+    },
+    {
+      "costId": "private_cost_02",
+      "pageId": "page_c",
+      "category": "page_creation",
+      "currency": "GBP",
+      "amountMinor": 1000
+    },
+    {
+      "costId": "private_cost_03",
+      "pageId": null,
+      "category": "distribution",
+      "currency": "GBP",
+      "amountMinor": 1000
+    },
+    {
+      "costId": "private_cost_04",
+      "pageId": null,
+      "category": "selling",
+      "currency": "GBP",
+      "amountMinor": 2000
+    },
+    {
+      "costId": "private_cost_05",
+      "pageId": "page_a",
+      "category": "delivery",
+      "currency": "GBP",
+      "amountMinor": 25000
+    }
+  ],
+  "costsComplete": true,
+  "cashEntries": [
+    {
+      "entryId": "private_bank_01",
+      "evidenceRef": "private_bank_evidence_01",
+      "currency": "GBP",
+      "direction": "in",
+      "amountMinor": 9000,
+      "occurredAt": "2026-02-01T00:00:00.000Z"
+    }
+  ],
+  "cashComplete": true,
+  "comparison": {
+    "minimumImpressions": 1000,
+    "minimumClicks": 50,
+    "minimumPaidOrders": 2,
+    "cpmMinor": 800,
+    "ctr": 0.02,
+    "cpcMinor": 80,
+    "paidOrderRatePerClick": 0.03,
+    "adCpaMinor": 4000,
+    "netRoas": 4
+  }
+}

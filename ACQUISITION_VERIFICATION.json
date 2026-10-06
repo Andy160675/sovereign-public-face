@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.0.0",
+  "status": "SOURCE_FEATURE_VERIFIED_DRAFT",
+  "verifiedAtUtc": "2026-10-06 01:38:40 UTC",
+  "repository": "Andy160675/sovereign-public-face",
+  "basePullRequest": 17,
+  "baseCommit": "72848941d62fa6a0e570d1a8fecddfacddfab199",
+  "baseTree": "57a8be1e13ffb7a26a7f37f5c49c37672a6a0ce1",
+  "scope": "Offline page/campaign acquisition report and integration contract; live collection and processor verification are not connected.",
+  "nodeVersion": "v24.19.0",
+  "testCommand": "node --test tests/diagnostic/*.test.mjs",
+  "tests": {
+    "passed": 74,
+    "failed": 0,
+    "skipped": 0,
+    "existingDiagnosticTests": 49,
+    "newAcquisitionTests": 25
+  },
+  "moduleSyntax": "PASS",
+  "realCliSyntheticRun": "PASS",
+  "testFirstEvidence": "New acquisition tests failed against a stub before implementation; the additional repeat-order regression failed before its bounded correction.",
+  "unchangedBaselineFilesVerified": 11,
+  "independentReview": {
+    "status": "PASSED_FOR_SOURCE_DRAFT",
+    "reviewer": "Independent AI code reviewer, separate from implementer",
+    "criticalOutstanding": 0,
+    "importantOutstanding": 0,
+    "minorOutstanding": 0,
+    "correction": "Removed incorrect upper bound of 1 from paid-order-per-click benchmark; independent targeted test and boundary probes passed.",
+    "p95": "NOT_ASSESSED"
+  },
+  "fullRepositoryTestBuild": "NOT_RUN_LOCALLY; this environment holds a verified feature source snapshot. Inspect GitHub CI separately.",
+  "inspectedBaselineCi": {
+    "featureRun": "https://github.com/Andy160675/sovereign-public-face/actions/runs/37277822028",
+    "featureConclusion": "success",
+    "publicClientRun": "https://github.com/Andy160675/sovereign-public-face/actions/runs/37277821961",
+    "publicClientConclusion": "failure",
+    "failedTests": 35,
+    "passedTests": 18,
+    "skippedTests": 3,
+    "note": "Failure predates this change. Logs also show two Stripe API-key import errors. Baseline build and public bundle verification steps succeeded."
+  },
+  "sourceOnly": true,
+  "note": "Unsigned source verification record; it is not a release, authenticated payment, independent custody, or P95 receipt. File hashes exclude this record itself.",
+  "files": [
+    {
+      "path": "tools/diagnostic/analyse-acquisition.mjs",
+      "bytes": 17169,
+      "sha256": "a8ca5c7fe66b06c1579697e607058e37ddad1b278da9db49a18cb2431c4995b9",
+      "gitBlobSha": "dd27fc3bdcd990cb568fdc7be4b981cdcc51d496"
+    },
+    {
+      "path": "tests/diagnostic/acquisition.test.mjs",
+      "bytes": 13853,
+      "sha256": "5f84ad194bcff497d588f14e5deaae231d1f846351d9f673228a1caa1e202598",
+      "gitBlobSha": "91c9ce2ae81ce12fac9d309dc30c5750eb7104cf"
+    },
+    {
+      "path": "tests/diagnostic/fixtures/acquisition.synthetic.json",
+      "bytes": 2902,
+      "sha256": "b96de007e97d78b6b1dc9a4fc8c44fe3036d0e9e301301474910b78e65afedad",
+      "gitBlobSha": "13f2a325a2252ef76bc6ffc0cc8105c52a10235b"
+    },
+    {
+      "path": "ACQUISITION_MEASUREMENT.md",
+      "bytes": 10817,
+      "sha256": "cc7f641a85c110c6638276721c2acfdb1c6b20bc4fb1e65ec055056c75c85647",
+      "gitBlobSha": "1ad06e76e47a322bd91c41f9ff6e857fc2aa6c9f"
+    }
+  ]
+}

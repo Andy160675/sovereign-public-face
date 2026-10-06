@@ -1,0 +1,196 @@
+{
+  "acquisition": null,
+  "controls": {
+    "schemaVersion": "1.0.0",
+    "asOf": "2026-10-06",
+    "currency": "EUR",
+    "evidence": [
+      {
+        "id": "cash",
+        "kind": "observed_result",
+        "status": "recorded",
+        "purpose": "reconciled_risk_budget",
+        "subjectId": "treasury",
+        "payloadHash": "95adc60d0d3598e20b61f71fea15d5cba59b2a5846ec620a2434ebb5a6100a17",
+        "recordedOn": "2026-10-06",
+        "validUntil": "2027-01-01"
+      },
+      {
+        "id": "budget",
+        "kind": "contractual_commitment",
+        "status": "accepted",
+        "purpose": "risk_budget",
+        "subjectId": "treasury",
+        "payloadHash": "18f45d9d3f885ebcf67760225426d8437760d13e5097b5e2f77f91b1671f97ce",
+        "recordedOn": "2026-10-06",
+        "validUntil": "2027-01-01"
+      },
+      {
+        "id": "permission",
+        "kind": "observed_result",
+        "status": "recorded",
+        "purpose": "contact_permission",
+        "subjectId": "partner1",
+        "payloadHash": "7cc0145592f3fba584e799e5d3a27edb7917753d8d387de060e3930b7295065b",
+        "recordedOn": "2026-10-06",
+        "validUntil": "2027-01-01"
+      },
+      {
+        "id": "agreement",
+        "kind": "contractual_commitment",
+        "status": "accepted",
+        "purpose": "distribution_agreement",
+        "subjectId": "partner1",
+        "payloadHash": "7cc0145592f3fba584e799e5d3a27edb7917753d8d387de060e3930b7295065b",
+        "recordedOn": "2026-10-06",
+        "validUntil": "2027-01-01"
+      },
+      {
+        "id": "cap",
+        "kind": "observed_result",
+        "status": "recorded",
+        "purpose": "qualified_capacity",
+        "subjectId": "worker1",
+        "payloadHash": "9558bdeecdc3ef03c621f5893a8cb7dd1c9fa23c28eb163f5f094f055ceac3fd",
+        "recordedOn": "2026-10-06",
+        "validUntil": "2027-01-01"
+      },
+      {
+        "id": "terms",
+        "kind": "contractual_commitment",
+        "status": "accepted",
+        "purpose": "job_terms",
+        "subjectId": "job1",
+        "payloadHash": "b0f2dd05a18671e9bbad10714afe531eab164ccfdcacad44c4b0fcad5d56037c",
+        "recordedOn": "2026-10-06",
+        "validUntil": "2027-01-01"
+      },
+      {
+        "id": "activation",
+        "kind": "observed_result",
+        "status": "recorded",
+        "purpose": "verified_activation",
+        "subjectId": "job1",
+        "payloadHash": "2a427f1e68bc2753f0016122e89e3e3b5138b2728d0fc9fbe9cde52db0fd4a8f",
+        "recordedOn": "2026-10-06",
+        "validUntil": "2027-01-01"
+      },
+      {
+        "id": "result",
+        "kind": "observed_result",
+        "status": "recorded",
+        "purpose": "measured_checked_value",
+        "subjectId": "job1",
+        "payloadHash": "d6a936fbaf3bbdd443d5915f7277a216e272fe9167fb7c1ddb7d6d9176b50559",
+        "recordedOn": "2026-10-06",
+        "validUntil": "2027-01-01"
+      }
+    ],
+    "distribution": {
+      "partners": [
+        {
+          "id": "partner1",
+          "namedContact": true,
+          "reachable": true,
+          "permissionRef": "permission",
+          "agreementRef": "agreement"
+        }
+      ],
+      "owned": []
+    },
+    "capabilities": [
+      {
+        "id": "worker1",
+        "artifactHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "producerId": "producer1",
+        "verifierId": "verifier1",
+        "routineHumanMinutes": 0,
+        "founderMinutes": 0,
+        "capacity": 2,
+        "inFlight": 0,
+        "proofRef": "cap"
+      }
+    ],
+    "jobs": [
+      {
+        "id": "job1",
+        "capabilityId": "worker1",
+        "acceptedOn": "2026-10-06",
+        "terms": {
+          "version": "1",
+          "currency": "EUR",
+          "feeMinor": 10000,
+          "thirdPartyMinor": 1000,
+          "customerCostMinor": 0,
+          "metric": "cost_saved",
+          "baselineId": "base1",
+          "methodId": "method1",
+          "measurementDays": 14,
+          "cureWorkingDays": 5,
+          "maxPauseDays": 7,
+          "decisionDays": 7,
+          "remedyCapMinor": 10000,
+          "thirdPartyCostsDisclosed": true,
+          "customerObligationsAgreed": true,
+          "mandatoryRightsPreserved": true,
+          "paymentMode": "pay_after_value",
+          "calendarTimeZone": "Atlantic/Canary",
+          "holidays": []
+        },
+        "termsRef": "terms",
+        "activation": {
+          "on": "2026-10-06",
+          "inputsReady": true,
+          "accessReady": true,
+          "baselineReady": true,
+          "proofRef": "activation"
+        },
+        "pauses": [],
+        "result": {
+          "on": "2026-10-06",
+          "amountMinor": 15000,
+          "metric": "cost_saved",
+          "baselineId": "base1",
+          "methodId": "method1",
+          "resultHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "qualityPassed": true,
+          "producerId": "p1",
+          "verifierId": "v1",
+          "evidenceRef": "result"
+        },
+        "collectedMinor": 0,
+        "refundedMinor": 0,
+        "unspentWorstCaseMinor": 2000
+      }
+    ],
+    "treasury": {
+      "reconciled": true,
+      "clearedMinor": 100000,
+      "essentialMinor": 10000,
+      "otherRefundReserveMinor": 0,
+      "otherCommitmentsMinor": 0,
+      "protectedRunwayMinor": 20000,
+      "refundReservedMinor": 0,
+      "authorisedLossLimitMinor": 20000,
+      "authorisedRefundLimitMinor": 20000,
+      "lossSpentMinor": 0,
+      "recordRef": "cash",
+      "budgetRef": "budget"
+    },
+    "experiment": {
+      "permissionBreach": false,
+      "misleadingClaim": false,
+      "dataExposure": false,
+      "brokenFulfilment": false,
+      "guaranteeBreach": false,
+      "unspentAdCapMinor": 0,
+      "spendLimitReached": false,
+      "trackingComplete": true,
+      "windowClosed": true,
+      "contacts": 10,
+      "replies": 0,
+      "baselineReplyProbability": 0.05,
+      "repeatedFindingRef": null
+    }
+  }
+}
