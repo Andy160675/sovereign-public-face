@@ -241,3 +241,61 @@ for (const [name, source, revised] of [
   await assert.rejects(f.service.prepare({...f.input,promotion:source},f.context),e=>e.code==='CHECK_FAILED');
   assert.equal(f.counts().checkouts,0);assert.equal(f.orders.size,0);
 });
+
+// A second mention of an existing number can introduce a new claim while leaving
+// a set of numeric values unchanged. Preserve occurrences, including repeated
+// values; the checker fixture approves everything and cannot hide this defect.
+for (const [name, source, revised] of [
+  ['an invented last-entry time repeating the opening time', 'Doors open at 7.', 'Doors open at 7; last entry 7.'],
+  ['a dropped last-entry claim sharing the opening time', 'Doors open at 7; last entry 7.', 'Doors open at 7.'],
+  ['an invented event repeating a glued time', 'Doors open at 7pm.', 'Doors open at 7pm; dinner starts at 7pm.'],
+]) test('code check holds '+name, async()=>{
+  const f=setup({text:revised});
+  await assert.rejects(f.service.prepare({...f.input,promotion:source},f.context),e=>e.code==='CHECK_FAILED');
+  assert.deepEqual(f.counts(),{generated:1,checked:1,checkouts:0});assert.equal(f.orders.size,0);
+});
+
+for (const [name, source, revised] of [
+  ['repeated plain numeric claims reordered', 'Doors open at 7; last entry 7.', 'Last entry 7; doors open at 7.'],
+  ['repeated time claims reordered and formatted', 'Doors open 7pm. Dinner starts 7pm.', 'Dinner starts 7 p.m. Doors open 7 p.m.'],
+]) test('code check accepts '+name, async()=>{
+  const f=setup({text:revised});
+  const o=await f.service.prepare({...f.input,promotion:source},f.context);
+  assert.equal(o.status,'READY_UNPAID');assert.equal(f.counts().checkouts,0);
+});
+
+// In an explicit for/per list, a bare conjunction joins completed item-price
+// pairs. It must not fabricate a swap when those intact pairs move together.
+for (const [name, source, revised] of [
+  ['an and-joined for-list with its shared lead-in', 'It costs £6 for coffee and £8 for pastry.', 'It costs £8 for pastry and £6 for coffee.'],
+  ['an and-joined per-list', 'It costs £6 per adult and £8 per child.', 'It costs £8 per child and £6 per adult.'],
+  ['an or-joined for-list', 'Choose £6 for coffee or £8 for pastry.', 'Choose £8 for pastry or £6 for coffee.'],
+  ['a for-list with shared lead-in words retained', 'It costs £6 for coffee and £8 for pastry.', 'Today it costs £8 for pastry and £6 for coffee.'],
+  ['a comma-and for-list with a changed shared lead-in', 'It costs £6 for coffee, and £8 for pastry.', 'Our prices are £8 for pastry, and £6 for coffee.'],
+  ['a lowercase for-list beside unchanged wrapper sentences', 'Open 7 days. it costs £6 for coffee and £8 for pastry. Booking essential.', 'Open 7 days. it costs £8 for pastry and £6 for coffee. Booking essential.'],
+  ['three complete item-price pairs rotated in an and-list', 'It costs £6 for coffee and £8 for pastry and £4 for cake.', 'It costs £4 for cake and £6 for coffee and £8 for pastry.'],
+]) test('code check accepts '+name, async()=>{
+  const f=setup({text:revised});
+  const o=await f.service.prepare({...f.input,promotion:source},f.context);
+  assert.equal(o.status,'READY_UNPAID');assert.equal(f.counts().checkouts,0);
+});
+
+// Context naming a state, date, or range remains evidence. Do not turn this
+// bounded list correction into an override that trusts only the noun after for.
+for (const [name, source, revised] of [
+  ['prices swapped within an and-joined for-list', 'It costs £6 for coffee and £8 for pastry.', 'It costs £8 for coffee and £6 for pastry.'],
+  ['prices swapped within an or-joined per-list', 'It costs £6 per adult or £8 per child.', 'It costs £8 per adult or £6 per child.'],
+  ['was/now roles swapped for the same noun', 'Was £20 for adults, now £15 for adults.', 'Was £15 for adults, now £20 for adults.'],
+  ['was/now roles swapped while distinct item-price pairs stay intact', 'Was £20 for adults and now £15 for children.', 'Was £15 for children and now £20 for adults.'],
+  ['dates swapped while distinct item-price pairs stay intact', 'Friday £6 for coffee and Saturday £8 for pastry.', 'Friday £8 for pastry and Saturday £6 for coffee.'],
+  ['a trailing date moved to another offer', 'Friday £6 for coffee and £8 for pastry on Saturday.', 'Friday £8 for pastry and £6 for coffee on Saturday.'],
+  ['a trailing inclusion moved to another offer', 'It costs £6 for coffee and £8 for pastry with ice cream.', 'It costs £8 for pastry and £6 for coffee with ice cream.'],
+  ['mixed bundle-and-choice conjunctions regrouped', 'It costs £6 for coffee and £8 for pastry or £4 for cake.', 'It costs £4 for cake and £6 for coffee or £8 for pastry.'],
+  ['a between-range with reversed context', 'Between £6 for coffee and £8 for pastry.', 'Between £8 for pastry and £6 for coffee.'],
+  ['a from-range with reversed context', 'From £6 for coffee and £8 for pastry.', 'From £8 for pastry and £6 for coffee.'],
+  ['a from-to range with reversed context', 'From £6 for coffee to £8 for pastry.', 'From £8 for pastry to £6 for coffee.'],
+]) test('code check still holds '+name, async()=>{
+  const f=setup({text:revised});
+  await assert.rejects(f.service.prepare({...f.input,promotion:source},f.context),e=>e.code==='CHECK_FAILED');
+  assert.deepEqual(f.counts(),{generated:1,checked:1,checkouts:0});assert.equal(f.orders.size,0);
+});

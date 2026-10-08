@@ -19,8 +19,9 @@ function equal(a, b) {
 const words = text => text.trim().split(/\s+/u).filter(Boolean).length;
 // Every number counts as a fact, including ones glued to letters ("5pm", "2nd").
 // am/pm stays part of the fact so "5pm" -> "7pm" or "5am" is caught; spacing and dots are normalised.
-const identifiers = text => new Set((text.match(/\d+(?:[.,:]\d+)*(?:%|\s?[ap]\.?m\.?(?![a-z]))?/giu) ?? [])
-  .map(m => m.toLowerCase().replace(/\s?([ap])\.?m\.?$/u, '$1m')));
+// Preserve occurrences: a set cannot detect an invented second use of a number.
+const identifiers = text => (text.match(/\d+(?:[.,:]\d+)*(?:%|\s?[ap]\.?m\.?(?![a-z]))?/giu) ?? [])
+  .map(m => m.toLowerCase().replace(/\s?([ap])\.?m\.?$/u, '$1m')).sort();
 function currencyFacts(text) {
   // Bind each visible currency marker to its amount. Models must never infer a
   // missing marker, even when both worker and checker agree with the inference.
@@ -38,7 +39,8 @@ function currencyFacts(text) {
 // ("£6 coffee" -> coffee). Where English marks the attachment outright, the noun
 // introduced by "for" or "per" straight after the figure is taken as well
 // ("£10 for adults" -> adults), and that phrase is not re-read as the next figure's
-// run. Every word of the chosen run is an anchor of that figure.
+// run. In a complete, unqualified list, a bare and/or between distinct for/per
+// pairs joins the list; otherwise the chosen run remains part of the anchors.
 //
 // Both runs stop at the sentence the figure is written in. Without that stop a
 // figure reaches into its NEIGHBOURS' sentences for anchors, and which neighbour it
@@ -46,8 +48,8 @@ function currencyFacts(text) {
 // two whole sentences re-anchors both figures and fabricates a trade. There are two
 // such reaches and both are closed here: backwards ("Dogs welcome. 20 seats only."
 // gave 20 the anchors "dogs welcome") and forwards ("Doors at 7. 20 seats only.
-// Booking essential." gave 20 the anchors "booking essential"). No word list and no
-// capital letters take part, so the same promotion written in any case, on one line
+// Booking essential." gave 20 the anchors "booking essential"). Capital letters
+// do not affect the comparison, so the same promotion written in any case, on one line
 // or on many, in any of the usual price-list shapes, is read the same way.
 // A line's leading list marker ends the stretch too. Its number counts the line,
 // it does not describe the item, so it must not take the item's words as anchors:
@@ -75,9 +77,12 @@ const ANCHOR_WORD = /\p{L}[\p{L}\p{M}'’-]*/u;
 function anchoredFigures(text) {
   const symbols = {GBP:'£',EUR:'€',USD:'$'};
   const pattern = /(\p{Sc}|\b(?:GBP|EUR|USD)\b)?\s*(\d+(?:[.,:]\d+)*(?:%|\s?[ap]\.?m\.?(?![a-z]))?)\s*(\p{Sc}|\b(?:GBP|EUR|USD)\b)?/giu;
+  const pair = `(?:${pattern.source})\\s*(?:for|per)\\s+${ANCHOR_WORD.source}`;
+  const completeList = new RegExp(`^${pair}(?:[\\s,;:]*(?:and|or)[\\s,;:]*${pair})+[\\s,;:]*$`, 'iu');
   const spoken = slice => slice.toLowerCase().match(new RegExp(ANCHOR_WORD, 'gu')) ?? [];
   const found = [...text.matchAll(pattern)];
   let cursor = 0;
+  let previousTie;
   return found.map((match, place) => {
     const marker = (match[1] ?? match[3] ?? '').toUpperCase();
     // The currency marker is part of the figure, so "£6" and "€6" are two figures.
@@ -92,7 +97,29 @@ function anchoredFigures(text) {
     const anchors = spoken(text.slice(Math.max(cursor, from), match.index));
     cursor = ends;
     const tied = text.slice(ends, to).match(new RegExp(`^[\\s,;:]*(?:for|per)\\s+(${ANCHOR_WORD.source})`, 'iu'));
-    if (tied) { anchors.push(tied[1].toLowerCase()); cursor = ends + tied[0].length; }
+    const precedingTie = previousTie;
+    previousTie = undefined;
+    if (tied) {
+      const noun = tied[1].toLowerCase();
+      const sentence = text.slice(edge, to);
+      const firstFigure = found.find(item => {
+        const start = item.index + item[0].indexOf(item[2]);
+        return start >= edge && start < to;
+      });
+      // A connector alone must not trade places with a shared lead-in such as
+      // "It costs". Keep state/date wording, ranges, and mixed bundle/choice
+      // conjunctions intact. Validate the whole list before omitting any anchor:
+      // a trailing qualifier may belong only to its final item, not to all items.
+      if (precedingTie && precedingTie.edge === edge && precedingTie.to === to &&
+          precedingTie.noun !== noun &&
+          firstFigure && completeList.test(text.slice(Math.max(edge, firstFigure.index), to)) &&
+          /^[\s,;:]*(?:and|or)[\s,;:]*$/iu.test(text.slice(precedingTie.end, match.index)) &&
+          !/\b(?:between|from)\b/iu.test(sentence) &&
+          !(/\band\b/iu.test(sentence) && /\bor\b/iu.test(sentence))) anchors.length = 0;
+      anchors.push(noun);
+      cursor = ends + tied[0].length;
+      previousTie = {edge, to, noun, end:cursor};
+    }
     else if (!anchors.length) {
       const stop = Math.min(found[place + 1]?.index ?? text.length, to);
       anchors.push(...spoken(text.slice(ends, stop)));
@@ -154,7 +181,7 @@ function inspectDraft(input, worker, checker) {
   const w = worker?.data, c = checker?.data;
   if (w?.eligible !== true || c?.eligible !== true || c?.accepted !== true || typeof w.text !== 'string' || !w.text.trim() || w.text.length > 4000 || words(w.text) > 150 || !strings(w.changes) || !strings(w.human) || !strings(w.environment) || !strings(c.notes) || !strings(c.human) || !strings(c.environment)) fail(422, 'CHECK_FAILED', 'The independent check did not approve this draft. No checkout or charge was created.');
   const original = identifiers(input.promotion), revised = identifiers(w.text);
-  if (original.size !== revised.size || [...original].some(n => !revised.has(n))) fail(422, 'CHECK_FAILED', 'The draft changed a numeric fact. No checkout or charge was created.');
+  if (canonical(original) !== canonical(revised)) fail(422, 'CHECK_FAILED', 'The draft added, removed or changed a numeric mention. No checkout or charge was created.');
   if (canonical(currencyFacts(input.promotion)) !== canonical(currencyFacts(w.text))) fail(422, 'CHECK_FAILED', 'The draft changed a currency fact. No checkout or charge was created.');
   if (exchangedFigures(input.promotion, w.text)) fail(422, 'CHECK_FAILED', 'The draft swapped two figures between the things they describe. No checkout or charge was created.');
   return {
