@@ -33,6 +33,10 @@ jobs:
       - name: Run tests
         run: pnpm test
 
+      - name: Run Promotion Fix native tests
+        if: always()
+        run: node --test server/promotion-fix-service.test.mjs server/promotion-fix-adapters.test.mjs server/promotion-fix-http.test.mjs
+
       - name: Build production bundle
         if: always()
         run: pnpm build
