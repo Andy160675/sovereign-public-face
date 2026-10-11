@@ -33,7 +33,7 @@ jobs:
       - name: Run tests
         env:
           STRIPE_SECRET_KEY: sk_test_ci_dummy_not_live
-        run: pnpm test
+        run: pnpm run test:ci
 
       - name: Build production bundle
         if: always()
