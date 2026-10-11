@@ -115,11 +115,7 @@ describe("Vercel Stripe webhook adapter (RECORDED_ONLY)", () => {
     const r = await postRaw(payload, "t=1,v1=forged_signature_bytes");
     expect(r.status).toBe(400);
     expect(journal.events.size).toBe(0);
-    expect(journal.chain.map((x) => x.kind)).toEqual([
-      "stripe.delivery",
-      "stripe.signature",
-    ]);
-    expect((journal.chain[1]!.payload as { event_id: unknown }).event_id).toBeNull();
+    expect(journal.chain).toHaveLength(0);
   });
 
   it("valid fixture → RECORDED_ONLY (no fulfilment claim)", async () => {

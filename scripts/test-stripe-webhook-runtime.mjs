@@ -53,9 +53,9 @@ try {
   const unconfigured = await fetch(url, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
   });
-  assert.equal(unconfigured.status, 500);
-  assert.deepEqual(await unconfigured.json(), { error: 'Receipt storage fault' });
-  console.log('PASS: emitted ESM closure loads; GET 404; empty POST 400; unconfigured POST fails closed with 500.');
+  assert.equal(unconfigured.status, 503);
+  assert.deepEqual(await unconfigured.json(), { error: 'Webhook mode configuration unavailable' });
+  console.log('PASS: emitted ESM closure loads; GET 404; empty POST 400; unconfigured POST fails closed with 503 before storage.');
 } finally {
   if (server) await new Promise(resolve => server.close(resolve));
   await rm(output, { recursive: true, force: true });

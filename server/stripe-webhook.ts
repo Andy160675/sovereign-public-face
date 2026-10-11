@@ -2,10 +2,12 @@
  * Stripe Webhook Handler — record-only receipt patch (PREPARE/TEST).
  *
  * Normal success receipts: Delivery → Signature → Classification → Execution.
- * SAFE is emitted only for hold / suspension / quarantine / config lockout.
+ * SAFE is emitted only for authenticated hold / suspension / quarantine.
  *
- * Delivery commits BEFORE signature verification with event_id:null.
- * Failed outcome rolls back the record-only op but preserves Delivery.
+ * Only authenticated deliveries enter the journal (event_id:null on Delivery).
+ * Failed outcome rolls back the record-only op but preserves authenticated Delivery.
+ * Unauthenticated/config-lockout requests never open a journal transaction.
+ * Admission is bounded per handler before raw parsing; raw bodies are identity-only.
  * No evt_test_ bypass. No customer email/metadata/raw body/secret/signature/IP
  * in receipts or routine logs. No fulfilment invention.
  *
@@ -18,6 +20,7 @@ import type {
 } from "express";
 import express from "express";
 import Stripe from "stripe";
+import { performance } from "node:perf_hooks";
 import {
   createMemoryReceiptJournal,
   MysqlReceiptJournal,
@@ -40,6 +43,8 @@ export interface StripeWebhookOptions {
   /** Connector live/test mode. Must match event.livemode. */
   mode?: "live" | "test";
   clock?: () => string;
+  /** Monotonic admission clock (tests). Defaults to performance.now(). */
+  admissionClock?: () => number;
   /** Override webhook secret (tests). Default: process.env.STRIPE_WEBHOOK_SECRET. */
   webhookSecret?: () => string | undefined;
   /**
@@ -108,8 +113,12 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
   const journal = options.journal ?? defaultJournal();
   const connectorId =
     options.connectorId ?? process.env.STRIPE_RECEIPT_CONNECTOR_ID ?? "stripe:default";
-  const mode: "live" | "test" =
-    options.mode ?? (process.env.STRIPE_RECEIPT_MODE === "live" ? "live" : "test");
+  // Explicit mode is required. Missing/typo config must not choose a connector scope.
+  const mode = options.mode ?? process.env.STRIPE_RECEIPT_MODE;
+  const admissionClock = options.admissionClock ?? (() => performance.now());
+  let admissionWindowStart = admissionClock();
+  let admittedRequests = 0;
+  let inFlightRequests = 0;
   const clock = options.clock ?? (() => new Date().toISOString());
   const getSecret =
     options.webhookSecret ?? (() => process.env.STRIPE_WEBHOOK_SECRET);
@@ -124,24 +133,75 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
 
   app.post(
     "/api/stripe/webhook",
-    express.raw({ type: "application/json" }),
+    // One constant-size connector-wide bucket. No attacker-selected identities,
+    // trust-proxy assumptions, durable logging, or unbounded per-IP maps.
+    (req: ExpressRequest, res: ExpressResponse, next) => {
+      const now = admissionClock();
+      if (now - admissionWindowStart >= 60_000) {
+        admissionWindowStart = now;
+        admittedRequests = 0;
+      }
+      if (admittedRequests >= 120) {
+        res.set("Retry-After", String(Math.max(1, Math.ceil((60_000 - (now - admissionWindowStart)) / 1000))));
+        return res.status(429).json({ error: "Webhook admission limit exceeded" });
+      }
+      // Bound unfinished body readers and pending storage work across windows.
+      if (inFlightRequests >= 8) {
+        res.set("Retry-After", "1");
+        return res.status(429).json({ error: "Webhook concurrency limit exceeded" });
+      }
+      admittedRequests++;
+      inFlightRequests++;
+      let released = false;
+      const release = () => {
+        if (released) return;
+        released = true;
+        inFlightRequests--;
+      };
+      res.once("finish", release);
+      res.once("close", release);
+      return next();
+    },
+    express.raw({ type: "application/json", limit: "100kb", inflate: false }),
     async (req: ExpressRequest, res: ExpressResponse) => {
-      const rawBody: Buffer = Buffer.isBuffer(req.body)
-        ? req.body
-        : Buffer.from(typeof req.body === "string" ? req.body : JSON.stringify(req.body ?? ""));
-
-      // Reject empty / clearly malformed before any durable write amplification.
-      if (!rawBody.length) {
+      // A previously parsed body cannot prove the original Stripe-signed bytes.
+      if (!Buffer.isBuffer(req.body) || !req.body.length) {
         return res.status(400).json({ error: "Malformed request" });
       }
+      const rawBody: Buffer = req.body;
 
+      // Configuration lockout and forged traffic must never touch durable state.
+      if (mode !== "live" && mode !== "test") {
+        return res.status(503).json({ error: "Webhook mode configuration unavailable" });
+      }
+      const secret = getSecret();
+      if (!secret?.trim()) {
+        return res.status(503).json({ error: "Webhook configuration unavailable" });
+      }
       const sigHeader = req.headers["stripe-signature"];
       const sig = typeof sigHeader === "string" ? sigHeader : undefined;
+      if (!sig) return res.status(400).json({ error: "Missing signature" });
+      const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeSecretKey?.trim()) {
+        return res.status(503).json({ error: "Stripe configuration unavailable" });
+      }
+
+      // SDK signature and timestamp/replay checks happen before the first write.
+      // Importing the module or serving unrelated routes requires no payment key.
+      const stripe = new Stripe(stripeSecretKey, {
+        apiVersion: "2026-02-25.clover",
+      });
+      let event: Stripe.Event;
+      try {
+        event = stripe.webhooks.constructEvent(rawBody, sig, secret);
+      } catch {
+        return res.status(400).json({ error: "Webhook signature verification failed" });
+      }
+
       const deliveryId = newDeliveryId();
       const receivedAt = clock();
       const payloadHash = sha256Bytes(rawBody);
-
-      // ── 1. DELIVERY (before verify; event_id must be null) ──────────────
+      // ── 1. DELIVERY (authenticated; event identity bound in Signature) ──
       try {
         await journal.transact(connectorId, async (tx) => {
           await tx.append("stripe.delivery", {
@@ -154,91 +214,6 @@ export function registerStripeWebhook(app: Express, options: StripeWebhookOption
         });
       } catch {
         return res.status(500).json({ error: "Receipt storage fault" });
-      }
-
-      const secret = getSecret();
-
-      // Missing configuration after Delivery: SAFE + 503 (not a forged-ack 200).
-      if (!secret) {
-        try {
-          await journal.transact(connectorId, async (tx) => {
-            await tx.append("stripe.safe", {
-              trigger: "missing_webhook_secret",
-              delivery_id: deliveryId,
-              tier: "connector",
-              scope: connectorId,
-              grants_affected: [],
-              notification_sent: false,
-            });
-          });
-        } catch {
-          return res.status(500).json({ error: "Receipt storage fault" });
-        }
-        return res.status(503).json({ error: "Webhook configuration unavailable" });
-      }
-
-      if (!sig) {
-        try {
-          await journal.transact(connectorId, async (tx) => {
-            await tx.append("stripe.signature", {
-              verified: false,
-              delivery_id: deliveryId,
-              event_id: null,
-              reason: "missing_signature_header",
-              signature_timestamp: null,
-              signature_timestamp_trusted: false,
-            });
-          });
-        } catch {
-          return res.status(500).json({ error: "Receipt storage fault" });
-        }
-        return res.status(400).json({ error: "Missing signature" });
-      }
-
-      // ── 2. SIGNATURE verify (SDK retains timestamp/replay protection) ───
-      // Construct the SDK only when a signed request reaches verification.
-      // Importing the module or serving unrelated routes must not require a payment key.
-      const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-      if (!stripeSecretKey) {
-        try {
-          await journal.transact(connectorId, async (tx) => {
-            await tx.append("stripe.safe", {
-              trigger: "missing_stripe_secret_key",
-              delivery_id: deliveryId,
-              tier: "connector",
-              scope: connectorId,
-              grants_affected: [],
-              notification_sent: false,
-            });
-          });
-        } catch {
-          return res.status(500).json({ error: "Receipt storage fault" });
-        }
-        return res.status(503).json({ error: "Stripe configuration unavailable" });
-      }
-      const stripe = new Stripe(stripeSecretKey, {
-        apiVersion: "2026-02-25.clover",
-      });
-      let event: Stripe.Event;
-      try {
-        event = stripe.webhooks.constructEvent(rawBody, sig, secret);
-      } catch {
-        try {
-          await journal.transact(connectorId, async (tx) => {
-            await tx.append("stripe.signature", {
-              verified: false,
-              delivery_id: deliveryId,
-              event_id: null,
-              reason: "verification_failed",
-              // Do not attest attacker-supplied header values as Stripe facts.
-              signature_timestamp: null,
-              signature_timestamp_trusted: false,
-            });
-          });
-        } catch {
-          return res.status(500).json({ error: "Receipt storage fault" });
-        }
-        return res.status(400).json({ error: "Webhook signature verification failed" });
       }
 
       // NOTE: evt_test_ bypass intentionally REMOVED. Test IDs take the full path.

@@ -38,7 +38,7 @@ Do **not** copy private `jarus/` into this public repo. Load ReceiptEngine only 
 | `STRIPE_RECEIPT_DATABASE_URL` | Prod MySQL journal URI |
 | `STRIPE_WEBHOOK_SECRET` | Stripe signing secret |
 | `STRIPE_SECRET_KEY` | Stripe SDK init |
-| `STRIPE_RECEIPT_MODE` | `live` or omit/`test` |
+| `STRIPE_RECEIPT_MODE` | Required: exactly `live` or `test`; unset/invalid values return 503 |
 | `STRIPE_RECEIPT_CONNECTOR_ID` | Connector PK |
 
 Resolution order (see `server/stripe-receipt-store.ts` + `docs/CI-JARUS-RECEIPT-ENGINE.md`):
@@ -86,6 +86,20 @@ export JARUS_RECEIPT_ENGINE_SHA256="<sha256 of that file>"
 export STRIPE_SECRET_KEY="sk_test_ci_dummy_not_live"
 pnpm test   # or: node scripts/ci-with-jarus-pin.mjs
 ```
+
+Unauthenticated requests and configuration lockouts never open a receipt transaction.
+Authenticated deliveries retain Delivery → Signature → Classification → Execution
+receipt order and the earlier committed Delivery survives an outcome rollback.
+
+Ingress accepts at most 120 POST attempts per 60-second monotonic window per
+registered handler before parsing, with at most eight requests in flight across
+windows. Completion or disconnect releases in-flight capacity. The bucket uses
+constant memory and ignores
+forwarded identities; rejected requests receive 429 with Retry-After. Raw JSON
+is limited to 100 KiB and compressed bodies are rejected. This is a per-process
+limit: horizontally scaled/serverless instances each have a bucket. Fleet-wide
+admission and availability protection still require a separately qualified host
+control. No unauthenticated request is made into a durable receipt.
 
 Adapter suite: `server/stripe-webhook-vercel-adapter.test.ts` — raw-body
 preservation, invalid signature fail-closed (400), valid fixture → RECORDED_ONLY.
