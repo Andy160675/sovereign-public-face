@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -71,4 +71,39 @@ test('existing output is preserved and public checkout output is refused', async
     assert.throws(() => prepareReceiptRuntime(options), /EEXIST/);
     assert.deepEqual(readFileSync(entry), before);
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('canonicalized output paths containing CR or LF refuse before output or environment writes', () => {
+  const root = mkdtempSync(join(tmpdir(), 'receipt-pin-canonical-path-'));
+  const cliDirectory = mkdtempSync(join(import.meta.dirname, 'receipt-pin-cli-'));
+  try {
+    // Exercise the real CLI with the public synthetic fixture and its matching pin.
+    const cli = join(cliDirectory, 'prepare-jarus-ci.mjs');
+    copyFileSync(new URL('./prepare-jarus-ci.mjs', import.meta.url), cli);
+    writeFileSync(join(cliDirectory, 'jarus-ci-pin.json'), JSON.stringify(pin));
+    const input = join(root, 'source.ts');
+    writeFileSync(input, source);
+    for (const [label, delimiter] of [['lf', '\n'], ['cr', '\r']]) {
+      const target = join(root, `runtime${delimiter}JARUS_CI_TEST_INJECTED=1`);
+      mkdirSync(target);
+      const alias = join(root, `alias-${label}`);
+      symlinkSync(target, alias, 'dir');
+      const output = join(target, 'compiled-runtime');
+      const envFile = join(root, `github-env-${label}`);
+      const before = 'EXISTING_ENV=untouched\n';
+      writeFileSync(envFile, before);
+      const child = spawnSync(process.execPath, [cli], {
+        encoding: 'utf8',
+        env: { ...process.env, JARUS_CI_SOURCE_PATH: input, JARUS_CI_OUTPUT_DIR: join(alias, 'compiled-runtime'), GITHUB_ENV: envFile },
+      });
+      assert.equal(child.status, 2, `${label}: ${child.stderr}`);
+      assert.match(child.stderr, /INVALID_PATH/);
+      assert.equal(child.stdout, '');
+      assert.equal(existsSync(output), false);
+      assert.equal(readFileSync(envFile, 'utf8'), before);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(cliDirectory, { recursive: true, force: true });
+  }
 });

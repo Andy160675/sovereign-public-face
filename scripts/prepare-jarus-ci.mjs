@@ -26,6 +26,7 @@ export function prepareReceiptRuntime({ sourcePath, outputDirectory, pin }) {
   if (ts.version !== pin.compiler) throw new Error('COMPILER_VERSION_MISMATCH');
   if (!sourcePath || !outputDirectory || /[\r\n]/.test(sourcePath + outputDirectory)) throw new Error('INVALID_PATH');
   const output = realDestination(outputDirectory);
+  if (/[\r\n]/.test(output)) throw new Error('INVALID_PATH');
   const inside = relative(checkout, output);
   if (output === checkout || (!isAbsolute(inside) && inside !== '..' && !inside.startsWith('../') && !inside.startsWith('..\\'))) {
     throw new Error('OUTPUT_MUST_BE_OUTSIDE_CHECKOUT');
