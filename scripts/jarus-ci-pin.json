@@ -1,0 +1,9 @@
+{
+  "source_repository": "Blade2AI/codex-sovereign",
+  "source_commit": "51174ceb9e07b9b041b80addc14671265d7aa8ba",
+  "source_path": "jarus/receipts/receipt-engine.ts",
+  "source_git_blob": "c660b9b3bbe14aeca4e6a044ebf1dfda0a7439ea",
+  "compiler": "5.9.3",
+  "source_sha256": "093e847404253fac210d958f07ed2e3f8ae56a51dabbff323d79efb31dac684a",
+  "engine_sha256": "775d572ad04b2d17aead2567a98a730d971d14eb74b3da8cc5fa9ddd62249adb"
+}

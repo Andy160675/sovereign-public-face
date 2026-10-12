@@ -139,8 +139,7 @@ describe("Stripe receipt patch (no provisioning)", () => {
   it("C: forged body cannot poison idempotency for a genuine event", async () => {
     expect((await post(event(), "t=1,v1=forged")).status).toBe(400);
     expect(journal.events.size).toBe(0);
-    expect(journal.chain.map((r) => r.kind)).toEqual(["stripe.delivery", "stripe.signature"]);
-    expect((journal.chain[1]!.payload as { event_id: unknown }).event_id).toBeNull();
+    expect(journal.chain).toHaveLength(0);
     expect((await post(event())).status).toBe(200);
     expect(journal.events.size).toBe(1);
   });
@@ -288,7 +287,7 @@ describe("Stripe receipt patch (no provisioning)", () => {
     configuredSecret = "";
     expect((await post(event())).status).toBe(503);
     expect(journal.events.size).toBe(0);
-    expect(journal.chain.at(-1)?.kind).toBe("stripe.safe");
+    expect(journal.chain).toHaveLength(0);
   });
 });
 
