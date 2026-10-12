@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  statuses: read
 
 jobs:
   verify:
@@ -30,10 +31,14 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run tests
+      - name: Test public CI admission helpers
+        run: node --test scripts/prepare-jarus-ci.test.mjs scripts/verify-private-ci-proof.test.mjs
+
+      - name: Verify exact-commit private full-suite proof
         env:
-          STRIPE_SECRET_KEY: sk_test_ci_dummy_not_live
-        run: pnpm run test:ci
+          PUBLIC_CI_PROOF_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/verify-private-ci-proof.mjs
 
       - name: Build production bundle
         if: always()
