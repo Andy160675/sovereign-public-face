@@ -3,12 +3,9 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { PRODUCTS, getProductById } from "./products";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import Stripe from "stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-02-25.clover",
-});
 
 export const appRouter = router({
   system: systemRouter,
@@ -67,6 +64,17 @@ export const appRouter = router({
         if (!product) {
           throw new Error(`Product not found: ${input.productId}`);
         }
+
+        const secretKey = process.env.STRIPE_SECRET_KEY;
+        if (!secretKey) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Checkout is not configured",
+          });
+        }
+        const stripe = new Stripe(secretKey, {
+          apiVersion: "2026-02-25.clover",
+        });
 
         const origin = ctx.req.headers.origin || ctx.req.headers.referer || "http://localhost:3000";
 
