@@ -130,3 +130,220 @@ test('time written differently but unchanged is accepted',async()=>{
   const o=await f.service.prepare({...f.input,promotion:'Happy hour 5pm Friday.'},f.context);
   assert.equal(o.status,'READY_UNPAID');
 });
+
+// A figure that has traded places with another is invisible to a set of figures:
+// the set is identical either way. These cases are the four shapes a price list is
+// actually written in, plus the pairs whose only difference is capitalisation, so a
+// refusal can never depend on whether the customer used capitals.
+for (const [name, source, revised] of [
+  ['prices swapped in one sentence', 'Coffee £6, pastry £8.', 'Coffee £8, pastry £6.'],
+  ['prices swapped across sentences', 'Coffee is £6. Pastry is £8.', 'Coffee is £8. Pastry is £6.'],
+  ['prices swapped across lines', 'Coffee £6\nPastry £8', 'Coffee £8\nPastry £6'],
+  ['prices swapped across bullets', '- Adults £10\n- Children £5', '- Adults £5\n- Children £10'],
+  ['was and now swapped in one sentence', 'Was £20, now £15.', 'Was £15, now £20.'],
+  ['was and now swapped across sentences', 'Was £20. Now £15.', 'Was £15. Now £20.'],
+  ['audience prices swapped', 'Adults £10, children £5.', 'Adults £5, children £10.'],
+  ['prices swapped in lowercase', 'coffee £6, pastry £8.', 'coffee £8, pastry £6.'],
+  ['times swapped', 'Happy hour 5pm, kitchen closes 9pm.', 'Happy hour 9pm, kitchen closes 5pm.'],
+  ['currencies swapped between items', 'Coffee £6 or tea €6.', 'Coffee €6 or tea £6.'],
+  ['prices swapped behind added copulas', 'Coffee £6, pastry £8.', 'Coffee is £8, pastry is £6.'],
+  ['prices swapped inside a for-list', '£10 for adults, £5 for children.', '£5 for adults, £10 for children.'],
+  ['prices swapped out of a for-list', '£10 for adults, £5 for children.', 'Adults £5, children £10.'],
+  ['three prices rotated', 'Coffee £6, pastry £8, cake £4.', 'Coffee £8, pastry £4, cake £6.'],
+  ['prices swapped in a leading-price list', '£6 coffee, £8 pastry.', '£8 coffee, £6 pastry.'],
+  ['plain numbers swapped between labels', 'Room 12, floor 3.', 'Room 3, floor 12.'],
+]) test('code check rejects '+name, async()=>{
+  const f=setup({text:revised});
+  await assert.rejects(f.service.prepare({...f.input,promotion:source},f.context),e=>e.code==='CHECK_FAILED');
+  assert.equal(f.counts().checkouts,0);assert.equal(f.orders.size,0);
+});
+
+// Editing is the product. Every one of these moves a figure's words along with it,
+// or rewords around it, and must still be accepted. A1 and A2 differ only by case
+// and must get the same verdict.
+for (const [name, source, revised] of [
+  ['sentences reordered', 'Coffee is £6. Pastry is £8.', 'Pastry is £8. Coffee is £6.'],
+  ['sentences reordered in lowercase', 'coffee is £6. pastry is £8.', 'pastry is £8. coffee is £6.'],
+  ['one sentence split in two', 'Coffee £6, pastry £8.', 'Coffee is £6. Pastry is £8.'],
+  ['lines merged and moved', 'Coffee £6.\nPastry £8.', 'Pastry £8 and coffee £6.'],
+  ['clauses reordered with their prices', 'Adults £10, children £5.', 'Children £5, adults £10.'],
+  ['restructured onto for-phrases', 'Adults £10, children £5.', 'Entry costs £10 for adults and £5 for children.'],
+  ['a single time reworded', 'Happy hour from 5pm on Friday.', 'Happy hour 5pm Friday.'],
+  ['reordered where a sentence starts with a digit', 'Doors at 7. 20 seats only.', '20 seats only. Doors at 7.'],
+  ['reordered across a comma list', 'Tapas from 6pm, drinks £4.', 'Drinks £4. Tapas from 6pm.'],
+  ['text left unchanged', 'Coffee £6, pastry £8.', 'Coffee £6, pastry £8.'],
+  ['three pairs rotated together', 'Adults £10, children £5, seniors £7.', 'Seniors £7, adults £10, children £5.'],
+  ['a range reworded in the same order', 'Open 9am to 5pm.', 'Open from 9am until 5pm.'],
+  ['prices moved in front of their items', 'Coffee £6, pastry £8.', '£6 coffee, £8 pastry.'],
+  ['prices moved in front and reordered', 'Coffee £6, pastry £8.', '£8 pastry, £6 coffee.'],
+  ['a repeated figure reordered', 'Coffee £6. Tea £6. Cake £8.', 'Cake £8. Coffee £6. Tea £6.'],
+  ['items renamed while each keeps its price', 'Adult £10, child £5.', 'Children £5, adults £10.'],
+]) test('code check accepts '+name, async()=>{
+  const f=setup({text:revised});
+  const o=await f.service.prepare({...f.input,promotion:source},f.context);
+  assert.equal(o.status,'READY_UNPAID');
+});
+
+// A figure's anchors must come from the sentence the figure is written in. When a
+// run reached into a neighbouring sentence, moving two whole sentences past each
+// other re-anchored both figures and fabricated a trade — and which way it broke
+// depended on where the figure sat inside the customer's own sentence: 'Doors at 7.
+// 20 seats only.' was refused, the same promotion as 'Only 20 seats.' was accepted.
+// Both reaches are covered: backwards (a sentence that begins with a figure) and
+// forwards (a sentence that ends with one, followed by more text).
+for (const [name, source, revised] of [
+  ['a figure-first sentence moved after a lead-in sentence', 'Dogs welcome. Doors at 7. 20 seats only.', 'Dogs welcome. 20 seats only. Doors at 7.'],
+  ['a figure-last sentence moved before a closing sentence', 'Doors at 7. 20 seats only. Booking essential.', '20 seats only. Doors at 7. Booking essential.'],
+  ['a figure-first sentence moved between lead-in and closing', 'Dogs welcome. Doors at 7. 20 seats only. Booking essential.', 'Dogs welcome. 20 seats only. Doors at 7. Booking essential.'],
+  ['a figure-first sentence under a heading', 'Our prices: Doors at 7. 20 seats only.', 'Our prices: 20 seats only. Doors at 7.'],
+  ['a figure-first sentence after a lead-in that carries its own number', 'Open 7 days. Doors at 7. 20 seats only.', 'Open 7 days. 20 seats only. Doors at 7.'],
+  ['the same promotion with the word order inside the sentence changed', 'Dogs welcome. Doors at 7. Only 20 seats.', 'Dogs welcome. Only 20 seats. Doors at 7.'],
+  ['a numbered price list reordered', '1. Coffee £6\n2. Pastry £8', '1. Pastry £8\n2. Coffee £6'],
+  ['a bracketed numbered price list reordered', '1) Coffee £6\n2) Pastry £8', '1) Pastry £8\n2) Coffee £6'],
+]) test('code check accepts '+name, async()=>{
+  const f=setup({text:revised});
+  const o=await f.service.prepare({...f.input,promotion:source},f.context);
+  assert.equal(o.status,'READY_UNPAID');
+});
+
+// Scoping the runs to a sentence must not blind the check to a real trade made
+// across those same sentences, nor to one made inside a numbered list.
+for (const [name, source, revised] of [
+  ['figures traded between sentences beside a lead-in', 'Dogs welcome. Doors at 7. 20 seats only.', 'Dogs welcome. Doors at 20. 7 seats only.'],
+  ['figures traded between sentences beside a closing', 'Doors at 7. 20 seats only. Booking essential.', 'Doors at 20. 7 seats only. Booking essential.'],
+  ['prices traded inside a numbered list', '1. Coffee £6\n2. Pastry £8', '1. Coffee £8\n2. Pastry £6'],
+]) test('code check rejects '+name, async()=>{
+  const f=setup({text:revised});
+  await assert.rejects(f.service.prepare({...f.input,promotion:source},f.context),e=>e.code==='CHECK_FAILED');
+  assert.equal(f.counts().checkouts,0);assert.equal(f.orders.size,0);
+});
+
+// A line's leading number counts the line; it does not describe the item. If it
+// takes the item's words as anchors, reordering a numbered list renumbers the
+// lines and looks exactly like a trade. Every marker shape must behave the same,
+// and a numeric RANGE written with a dash must not be mistaken for a marker.
+for (const [name, source, revised] of [
+  ['a bracketed numbered list reordered', '(1) Coffee £6\n(2) Pastry £8', '(1) Pastry £8\n(2) Coffee £6'],
+  ['a colon-marked numbered list reordered', '1: Coffee £6\n2: Pastry £8', '1: Pastry £8\n2: Coffee £6'],
+  ['a dash-marked numbered list reordered', '1 - Coffee £6\n2 - Pastry £8', '1 - Pastry £8\n2 - Coffee £6'],
+  ['a numbered list inside bullets reordered', '- 1. Coffee £6\n- 2. Pastry £8', '- 1. Pastry £8\n- 2. Coffee £6'],
+]) test('code check accepts '+name, async()=>{
+  const f=setup({text:revised});
+  const o=await f.service.prepare({...f.input,promotion:source},f.context);
+  assert.equal(o.status,'READY_UNPAID');
+});
+
+for (const [name, source, revised] of [
+  ['a dash-written range whose ends are exchanged', '7 - 9pm doors\n10 - 11pm music', '9 - 7pm doors\n11 - 10pm music'],
+  ['prices traded inside a bulleted numbered list', '- 1. Coffee £6\n- 2. Pastry £8', '- 1. Coffee £8\n- 2. Pastry £6'],
+]) test('code check rejects '+name, async()=>{
+  const f=setup({text:revised});
+  await assert.rejects(f.service.prepare({...f.input,promotion:source},f.context),e=>e.code==='CHECK_FAILED');
+  assert.equal(f.counts().checkouts,0);assert.equal(f.orders.size,0);
+});
+
+// A second mention of an existing number can introduce a new claim while leaving
+// a set of numeric values unchanged. Preserve occurrences, including repeated
+// values; the checker fixture approves everything and cannot hide this defect.
+for (const [name, source, revised] of [
+  ['an invented last-entry time repeating the opening time', 'Doors open at 7.', 'Doors open at 7; last entry 7.'],
+  ['a dropped last-entry claim sharing the opening time', 'Doors open at 7; last entry 7.', 'Doors open at 7.'],
+  ['an invented event repeating a glued time', 'Doors open at 7pm.', 'Doors open at 7pm; dinner starts at 7pm.'],
+]) test('code check holds '+name, async()=>{
+  const f=setup({text:revised});
+  await assert.rejects(f.service.prepare({...f.input,promotion:source},f.context),e=>e.code==='CHECK_FAILED');
+  assert.deepEqual(f.counts(),{generated:1,checked:1,checkouts:0});assert.equal(f.orders.size,0);
+});
+
+for (const [name, source, revised] of [
+  ['repeated plain numeric claims reordered', 'Doors open at 7; last entry 7.', 'Last entry 7; doors open at 7.'],
+  ['repeated time claims reordered and formatted', 'Doors open 7pm. Dinner starts 7pm.', 'Dinner starts 7 p.m. Doors open 7 p.m.'],
+]) test('code check accepts '+name, async()=>{
+  const f=setup({text:revised});
+  const o=await f.service.prepare({...f.input,promotion:source},f.context);
+  assert.equal(o.status,'READY_UNPAID');assert.equal(f.counts().checkouts,0);
+});
+
+// In an explicit for/per list, a bare conjunction joins completed item-price
+// pairs. It must not fabricate a swap when those intact pairs move together.
+for (const [name, source, revised] of [
+  ['an and-joined for-list with its shared lead-in', 'It costs £6 for coffee and £8 for pastry.', 'It costs £8 for pastry and £6 for coffee.'],
+  ['an and-joined per-list', 'It costs £6 per adult and £8 per child.', 'It costs £8 per child and £6 per adult.'],
+  ['an or-joined for-list', 'Choose £6 for coffee or £8 for pastry.', 'Choose £8 for pastry or £6 for coffee.'],
+  ['a for-list with shared lead-in words retained', 'It costs £6 for coffee and £8 for pastry.', 'Today it costs £8 for pastry and £6 for coffee.'],
+  ['a comma-and for-list with a changed shared lead-in', 'It costs £6 for coffee, and £8 for pastry.', 'Our prices are £8 for pastry, and £6 for coffee.'],
+  ['a lowercase for-list beside unchanged wrapper sentences', 'Open 7 days. it costs £6 for coffee and £8 for pastry. Booking essential.', 'Open 7 days. it costs £8 for pastry and £6 for coffee. Booking essential.'],
+  ['three complete item-price pairs rotated in an and-list', 'It costs £6 for coffee and £8 for pastry and £4 for cake.', 'It costs £4 for cake and £6 for coffee and £8 for pastry.'],
+]) test('code check accepts '+name, async()=>{
+  const f=setup({text:revised});
+  const o=await f.service.prepare({...f.input,promotion:source},f.context);
+  assert.equal(o.status,'READY_UNPAID');assert.equal(f.counts().checkouts,0);
+});
+
+// Context naming a state, date, or range remains evidence. Do not turn this
+// bounded list correction into an override that trusts only the noun after for.
+for (const [name, source, revised] of [
+  ['prices swapped within an and-joined for-list', 'It costs £6 for coffee and £8 for pastry.', 'It costs £8 for coffee and £6 for pastry.'],
+  ['prices swapped within an or-joined per-list', 'It costs £6 per adult or £8 per child.', 'It costs £8 per adult or £6 per child.'],
+  ['was/now roles swapped for the same noun', 'Was £20 for adults, now £15 for adults.', 'Was £15 for adults, now £20 for adults.'],
+  ['was/now roles swapped while distinct item-price pairs stay intact', 'Was £20 for adults and now £15 for children.', 'Was £15 for children and now £20 for adults.'],
+  ['dates swapped while distinct item-price pairs stay intact', 'Friday £6 for coffee and Saturday £8 for pastry.', 'Friday £8 for pastry and Saturday £6 for coffee.'],
+  ['a trailing date moved to another offer', 'Friday £6 for coffee and £8 for pastry on Saturday.', 'Friday £8 for pastry and £6 for coffee on Saturday.'],
+  ['a trailing inclusion moved to another offer', 'It costs £6 for coffee and £8 for pastry with ice cream.', 'It costs £8 for pastry and £6 for coffee with ice cream.'],
+  ['mixed bundle-and-choice conjunctions regrouped', 'It costs £6 for coffee and £8 for pastry or £4 for cake.', 'It costs £4 for cake and £6 for coffee or £8 for pastry.'],
+  ['a between-range with reversed context', 'Between £6 for coffee and £8 for pastry.', 'Between £8 for pastry and £6 for coffee.'],
+  ['a from-range with reversed context', 'From £6 for coffee and £8 for pastry.', 'From £8 for pastry and £6 for coffee.'],
+  ['a from-to range with reversed context', 'From £6 for coffee to £8 for pastry.', 'From £8 for pastry to £6 for coffee.'],
+]) test('code check still holds '+name, async()=>{
+  const f=setup({text:revised});
+  await assert.rejects(f.service.prepare({...f.input,promotion:source},f.context),e=>e.code==='CHECK_FAILED');
+  assert.deepEqual(f.counts(),{generated:1,checked:1,checkouts:0});assert.equal(f.orders.size,0);
+});
+
+
+// Current-source semantic regressions: approving model fixtures cannot replace
+// the deterministic binding between a figure and its entity, qualifier or state.
+for (const [name, source, revised] of [
+  ['numbered room capacities exchanged', 'Room 1 sleeps 4, room 2 sleeps 6.', 'Room 1 sleeps 6, room 2 sleeps 4.'],
+  ['quantity-qualified table times exchanged', 'Table for 2 at 7pm, table for 4 at 9pm.', 'Table for 2 at 9pm, table for 4 at 7pm.'],
+  ['and-joined numbered room capacities exchanged', 'Room 1 sleeps 4 and room 2 sleeps 6.', 'Room 1 sleeps 6 and room 2 sleeps 4.'],
+  ['and-joined quantity-qualified table times exchanged', 'Table for 2 at 7pm and table for 4 at 9pm.', 'Table for 2 at 9pm and table for 4 at 7pm.'],
+  ['all item labels replaced while their prices trade places', 'Coffee £6, pastry £8.', 'Espresso £8, croissant £6.'],
+  ['old and new prices exchanged behind explicit state rewording', 'Was £20, now £15.', 'Reduced from £15 to £20.'],
+  ['article-tied list prices exchanged', 'It costs £6 for a coffee and £8 for a pastry.', 'It costs £8 for a coffee and £6 for a pastry.'],
+  ['article-tied trailing inclusion moved to another offer', 'It costs £6 for a coffee and £8 for a pastry with ice cream.', 'It costs £8 for a pastry and £6 for a coffee with ice cream.'],
+  ['article-tied mixed conjunction regrouping', 'It costs £6 for a coffee and £8 for a pastry or £4 for a cake.', 'It costs £4 for a cake and £6 for a coffee or £8 for a pastry.'],
+  ['article-tied from-range reversed', 'From £6 for a coffee to £8 for a pastry.', 'From £8 for a pastry to £6 for a coffee.'],
+]) test('current semantic guard refuses '+name, async()=>{
+  const f=setup({text:revised});
+  await assert.rejects(f.service.prepare({...f.input,promotion:source},f.context),e=>e.code==='CHECK_FAILED');
+  assert.deepEqual(f.counts(),{generated:1,checked:1,checkouts:0});assert.equal(f.orders.size,0);
+});
+
+for (const [name, source, revised, language='en'] of [
+  ['intact numbered room clauses reordered', 'Room 1 sleeps 4, room 2 sleeps 6.', 'Room 2 sleeps 6, room 1 sleeps 4.'],
+  ['intact quantity-qualified table clauses reordered', 'Table for 2 at 7pm, table for 4 at 9pm.', 'Table for 4 at 9pm, table for 2 at 7pm.'],
+  ['an unchanged repeated entity', 'Room 1 sleeps 4, room 2 sleeps 6.', 'Room 1 sleeps 4, room 2 sleeps 6.'],
+  ['explicit state prices reworded without changing roles', 'Was £20, now £15.', 'Reduced from £20 to £15.'],
+  ['a-article item-price pairs reordered intact', 'It costs £6 for a coffee and £8 for a pastry.', 'It costs £8 for a pastry and £6 for a coffee.'],
+  ['a/an-article per-pairs reordered intact', 'It costs £6 per an adult and £8 per a child.', 'It costs £8 per a child and £6 per an adult.'],
+  ['the-article item-price pairs reordered intact', 'It costs £6 for the coffee and £8 for the pastry.', 'It costs £8 for the pastry and £6 for the coffee.'],
+  ['translation retains the original item and figure order', 'Coffee £6, pastry £8.', 'Café £6, pastel £8.', 'es'],
+]) test('current semantic guard preserves '+name, async()=>{
+  const f=setup({text:revised});
+  const prepared=await f.service.prepare({...f.input,promotion:source,language},f.context);
+  assert.equal(prepared.status,'READY_UNPAID');assert.equal(f.counts().checkouts,0);assert.equal(f.orders.size,1);
+});
+
+test('current semantic guard refuses renamed item-price trades behind shared copulas',async()=>{
+  const f=setup({text:'Espresso is £8. Croissant is £6.'});
+  await assert.rejects(f.service.prepare({...f.input,promotion:'Coffee is £6. Pastry is £8.'},f.context),e=>e.code==='CHECK_FAILED');
+  assert.equal(f.orders.size,0);assert.equal(f.counts().checkouts,0);
+});
+for(const [name,source,revised]of [
+  ['old/new clauses reordered with their original prices','Was £20, now £15.','Now £15, was £20.'],
+  ['composite entity values retained through predicate rewording','Room 1 sleeps 4, room 2 sleeps 6.','Room 2 accommodates 6, room 1 accommodates 4.'],
+])test('current semantic guard preserves '+name,async()=>{
+  const f=setup({text:revised});const o=await f.service.prepare({...f.input,promotion:source},f.context);
+  assert.equal(o.status,'READY_UNPAID');assert.equal(f.counts().checkouts,0);
+});
