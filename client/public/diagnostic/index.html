@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <title>Business diagnostic — VIPFish</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <a class="skip" href="#diagnostic">Skip to the diagnostic</a>
+  <header class="topbar">
+    <a class="wordmark" href="/" aria-label="VIPFish home">VIP<span>Fish</span><span class="brand-dot" aria-hidden="true">.</span></a>
+    <span class="preview">Review preview · no checkout</span>
+  </header>
+  <main id="diagnostic" class="layout">
+    <section class="intro" aria-labelledby="intro-title">
+      <p class="eyebrow">A useful place to start</p>
+      <h1 id="intro-title">We simplify AI.</h1>
+      <p class="lead">Find the work worth fixing first.</p>
+      <p class="intro-copy">Tell us where work gets stuck. Get a practical starting point and an explanation of which kind of help fits — including when you do not need to buy anything.</p>
+      <ol class="steps">
+        <li><span aria-hidden="true">01</span><div><strong>Start with the problem</strong><p>Only questions relevant to your answers.</p></div></li>
+        <li><span aria-hidden="true">02</span><div><strong>See what to check</strong><p>Evidence before promises or automation.</p></div></li>
+        <li><span aria-hidden="true">03</span><div><strong>Choose your next step</strong><p>A portable brief. No purchase required.</p></div></li>
+      </ol>
+      <p class="mechanism">Measure current work → put AI on repeatable parts → keep important decisions with people → show what changed.</p>
+    </section>
+    <section class="card" aria-label="Business diagnostic">
+      <div class="card-top"><span class="eyebrow">Your starting point</span><span id="step-count">Up to 7 questions</span></div>
+      <form id="diagnostic-form" aria-describedby="privacy-note">
+        <fieldset>
+          <legend><span id="question-title" role="heading" aria-level="2" tabindex="-1">Loading the diagnostic…</span></legend>
+          <p id="question-hint" class="muted"></p>
+          <div id="options" class="options"></div>
+        </fieldset>
+        <div class="actions">
+          <button id="back" class="secondary" type="button" hidden>Back</button>
+          <button id="next" class="primary" type="submit" disabled>Continue <span aria-hidden="true">→</span></button>
+        </div>
+        <p class="fine">Going back clears later answers so your recommendation stays consistent.</p>
+      </form>
+      <section id="result" hidden aria-labelledby="result-title">
+        <span class="tag">Based on your answers</span>
+        <h2 id="result-title" tabindex="-1"></h2>
+        <p id="result-outcome" class="result-lead"></p>
+        <div class="finding"><h3>What to check first</h3><p id="result-check"></p></div>
+        <div class="offer"><p class="eyebrow">An option to consider</p><div class="offer-heading"><h3 id="offer-name"></h3><span id="offer-price"></span></div><p id="offer-reason"></p><p class="fine">Recommendation only. No order, subscription or payment is created here.</p></div>
+        <div class="limitations"><strong>What this result does not establish</strong><p>Your answers have not been independently verified. These problem categories are provisional. No savings or business outcome has been confirmed.</p></div>
+        <details><summary>Review your answers</summary><dl id="answer-summary"></dl></details>
+        <div class="result-actions"><button id="download" type="button" class="primary">Download my brief <span aria-hidden="true">↓</span></button><a class="secondary button-link" href="/contact">Contact VIPFish</a></div>
+        <p class="fine">Your brief is a file you control. The contact link does not send your answers.</p>
+        <button id="restart" type="button" class="text-button">Start again</button>
+      </section>
+      <p id="status" aria-live="polite" class="status"></p>
+      <p id="error" role="alert" class="error" hidden></p>
+      <noscript><p>This diagnostic needs JavaScript to work. No answers are collected without it. You can contact VIPFish through the main site instead.</p></noscript>
+      <p id="privacy-note" class="privacy"><strong>No login. No payment. No answers sent.</strong><br>This page keeps answers in memory only. Reloading or closing it clears them. Do not enter personal or customer information.</p>
+    </section>
+  </main>
+  <footer><span>VIPFish · Work made simpler.</span><span>Preview for review, not a verified audit.</span></footer>
+</body>
+</html>
