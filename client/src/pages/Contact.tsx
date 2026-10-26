@@ -53,7 +53,7 @@ export default function Contact() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const to = "enquiries@sovereignsanctuarysystems.co.uk";
+    const to = "Andy@vipfish.ai";
     const subjectLine = `[${formData.subject || "General"}] Enquiry from ${formData.name}`;
     const body = [
       `Name: ${formData.name}`,
@@ -108,8 +108,8 @@ export default function Contact() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-ivory">Email</p>
-                    <a href="mailto:enquiries@sovereignsanctuarysystems.co.uk" className="text-gold text-sm hover:underline">
-                      enquiries@sovereignsanctuarysystems.co.uk
+                    <a href="mailto:Andy@vipfish.ai" className="text-gold text-sm hover:underline">
+                      Andy@vipfish.ai
                     </a>
                   </div>
                 </div>
