@@ -142,7 +142,7 @@ export default function Book() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <div className="flex items-center gap-2 text-ivory/70 text-[15px]">
                 <Mail className="w-4 h-4 text-gold" />
-                <span>contact@sovereign-sanctuary.com</span>
+                <span>Andy@vipfish.ai</span>
               </div>
             </div>
           </div>
