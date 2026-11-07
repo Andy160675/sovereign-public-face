@@ -114,3 +114,6 @@ temp/
 .vercel/qualification/
 **/.vercel/qualification/
 **/*jarus*dump*
+
+# Electron build output (electron-builder `directories.output`)
+electron-dist/

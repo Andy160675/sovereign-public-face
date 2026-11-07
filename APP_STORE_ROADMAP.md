@@ -12,9 +12,41 @@
 |---------|--------|------------|-------|
 | Web App | LIVE | React 19 + Tailwind 4 + tRPC + Express | Manus-hosted, Stripe integrated |
 | PWA | READY | manifest.json + Service Worker | Installable from browser on all platforms |
-| Desktop | SCAFFOLDED | Electron 33 + electron-builder | Main process, preload, build config ready |
+| Desktop | **BUILDS (Linux verified)** | Electron 44 + electron-builder 26 | See "Desktop build status" below |
 | iOS | ROADMAP | Capacitor (Phase 2) | Wraps existing React app |
 | Android | ROADMAP | Capacitor (Phase 2) | Wraps existing React app |
+
+---
+
+### Desktop build status — verified 29 September 2026
+
+The table above previously read `SCAFFOLDED`, which was accurate: the wrapper existed but
+could not be built or launched. Four separate gaps, all now closed:
+
+1. `electron` and `electron-builder` were in neither `package.json` nor the lockfile.
+2. `package.json` had **no `main` field**, so electron-builder had no entry point.
+3. None of the five `electron:*` scripts that `electron-builder.yml` documents existed.
+4. **Root cause of the silent failure:** pnpm 10 blocks postinstall scripts by default, so
+   Electron never downloaded its platform binary. Fixed persistently with
+   `pnpm.onlyBuiltDependencies`, so a fresh clone builds without manual approval.
+
+**Evidence, from an actual run rather than inspection:**
+
+| Check | Result |
+|---|---|
+| `pnpm run build` (web) | exit 0 — `dist/public` + `dist/index.js` |
+| Launch check, headless via `xvfb-run` | app ready, `browser-window-created`, 1 window titled "Sovereign Sanctuary Systems", exit 0 |
+| `electron-builder --linux --publish never` | `Sovereign Sanctuary Systems-1.0.0.AppImage` (179 MB) + `linux-unpacked/` |
+
+**Electron version.** This document specified Electron 33. The build uses **44**, the current
+stable line. A customer-facing desktop shell on a superseded Electron carries the browser
+engine's unpatched vulnerabilities, so the newer line was taken deliberately; it is recorded
+here rather than changed silently.
+
+**Not verified here:** Windows and macOS targets were not built — those need their own
+platform or a signing toolchain, and macOS additionally needs an Apple Developer identity.
+Nothing was published; `--publish never` was passed explicitly, although
+`electron-builder.yml` is configured to publish GitHub releases.
 
 ---
 

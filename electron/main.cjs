@@ -14,8 +14,19 @@ const path = require('path');
 // Force dark mode to match Sovereign Obsidian theme
 nativeTheme.themeSource = 'dark';
 
-// Production URL — change to your deployed domain
-const PRODUCTION_URL = 'https://sovereigna-sjdwyspm.manus.space';
+// Production URL for the packaged desktop app.
+//
+// This read `https://sovereigna-sjdwyspm.manus.space` — a Manus preview sandbox — so a
+// packaged build shipped to a customer opened the sandbox rather than the product. The
+// default below is the deployment this repository evidences as live: Stripe webhooks are
+// registered against `sovereign-public-face.vercel.app` in docs/VERCEL-STRIPE-WEBHOOK-ADAPTER.md
+// and docs/PROMOTION-FIX-WEBHOOK.md.
+//
+// If the canonical customer domain is `sovereignsanctuarysystems.co.uk` (used for
+// enquiries@ and listed in client/src/pages/Team.tsx) and it is bound to this project,
+// set SOVEREIGN_DESKTOP_URL or change the default — it is a one-line change. That could
+// not be confirmed from the build environment, which cannot reach either host.
+const PRODUCTION_URL = process.env.SOVEREIGN_DESKTOP_URL || 'https://sovereign-public-face.vercel.app';
 const DEV_URL = 'http://localhost:3000';
 
 let mainWindow;
