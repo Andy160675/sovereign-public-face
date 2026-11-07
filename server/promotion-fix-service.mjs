@@ -31,6 +31,113 @@ function currencyFacts(text) {
     return `${symbols[marker]??marker}:${match[2]??match[3]}`;
   }).sort();
 }
+// A figure on its own carries no meaning; what it is ATTACHED TO does. So each
+// figure is read together with the words written beside it, WITHIN ITS OWN SENTENCE:
+// the run since the previous figure ("Coffee £6" -> coffee), or, where nothing was
+// written before it in that sentence, the run up to the next figure instead
+// ("£6 coffee" -> coffee). Where English marks the attachment outright, the noun
+// introduced by "for" or "per" straight after the figure is taken as well
+// ("£10 for adults" -> adults), and that phrase is not re-read as the next figure's
+// run. Every word of the chosen run is an anchor of that figure.
+//
+// Both runs stop at the sentence the figure is written in. Without that stop a
+// figure reaches into its NEIGHBOURS' sentences for anchors, and which neighbour it
+// reaches depends on where the figure sits in its own sentence, so merely reordering
+// two whole sentences re-anchors both figures and fabricates a trade. There are two
+// such reaches and both are closed here: backwards ("Dogs welcome. 20 seats only."
+// gave 20 the anchors "dogs welcome") and forwards ("Doors at 7. 20 seats only.
+// Booking essential." gave 20 the anchors "booking essential"). No word list and no
+// capital letters take part, so the same promotion written in any case, on one line
+// or on many, in any of the usual price-list shapes, is read the same way.
+// A line's leading list marker ends the stretch too. Its number counts the line,
+// it does not describe the item, so it must not take the item's words as anchors:
+// otherwise reordering a numbered list renumbers the lines and looks like a trade.
+const LIST_NUMBER = String.raw`(?:^|\n)[ \t]*[(\[]?(?:[-*•][ \t]*)?\d+`;
+const SENTENCE_END = new RegExp(
+  String.raw`[.!?\n]+(?=\s|$)|\n` +
+  // `1.` `1)` `(1)` `1:` -- punctuation closing a line's leading number.
+  String.raw`|(?<=${LIST_NUMBER})[.):\]](?=\s)` +
+  // `1 - ` -- a dash marker, but only where a WORD follows, so a numeric range
+  // (`7 - 9pm`) is left alone and both of its figures keep their anchors.
+  String.raw`|(?<=${LIST_NUMBER})[ \t]*[-–—][ \t]*(?=\p{L})`, 'gu');
+// The stretch of text the figure at [start, ends) is written in: from the end of the
+// last sentence to finish before it, to the start of the first to finish after it.
+function sentenceAround(text, start, ends) {
+  let from = 0, to = text.length;
+  for (const edge of text.matchAll(SENTENCE_END)) {
+    const stops = edge.index + edge[0].length;
+    if (stops <= start) from = stops;
+    else if (edge.index >= ends) { to = edge.index; break; }
+  }
+  return [from, to];
+}
+const ANCHOR_WORD = /\p{L}[\p{L}\p{M}'’-]*/u;
+function anchoredFigures(text) {
+  const symbols = {GBP:'£',EUR:'€',USD:'$'};
+  const pattern = /(\p{Sc}|\b(?:GBP|EUR|USD)\b)?\s*(\d+(?:[.,:]\d+)*(?:%|\s?[ap]\.?m\.?(?![a-z]))?)\s*(\p{Sc}|\b(?:GBP|EUR|USD)\b)?/giu;
+  const spoken = slice => slice.toLowerCase().match(new RegExp(ANCHOR_WORD, 'gu')) ?? [];
+  const found = [...text.matchAll(pattern)];
+  let cursor = 0;
+  return found.map((match, place) => {
+    const marker = (match[1] ?? match[3] ?? '').toUpperCase();
+    // The currency marker is part of the figure, so "£6" and "€6" are two figures.
+    const figure = (marker ? `${symbols[marker] ?? marker}:` : '') + match[2].toLowerCase().replace(/\s?([ap])\.?m\.?$/u, '$1m');
+    const ends = match.index + match[0].length;
+    // Scope on the DIGITS, not on the whole match: the figure pattern pads itself
+    // with surrounding spaces, and a marker boundary sitting in that padding
+    // ("1 - Coffee") would otherwise fall inside the match and be passed over.
+    const digits = match.index + match[0].indexOf(match[2]);
+    const [edge, to] = sentenceAround(text, digits, digits + match[2].length);
+    const from = Math.min(edge, match.index);
+    const anchors = spoken(text.slice(Math.max(cursor, from), match.index));
+    cursor = ends;
+    const tied = text.slice(ends, to).match(new RegExp(`^[\\s,;:]*(?:for|per)\\s+(${ANCHOR_WORD.source})`, 'iu'));
+    if (tied) { anchors.push(tied[1].toLowerCase()); cursor = ends + tied[0].length; }
+    else if (!anchors.length) {
+      const stop = Math.min(found[place + 1]?.index ?? text.length, to);
+      anchors.push(...spoken(text.slice(ends, stop)));
+      cursor = stop;
+    }
+    return {figure, anchors};
+  });
+}
+// One figure per anchor. An anchor carrying two different figures in the same text
+// says nothing about either, so it is dropped rather than guessed at.
+function anchorFigures(text) {
+  const held = new Map();
+  for (const {figure, anchors} of anchoredFigures(text))
+    for (const anchor of anchors) held.set(anchor, held.has(anchor) && held.get(anchor) !== figure ? null : figure);
+  return held;
+}
+// The rule: refuse only on visible evidence that figures traded places. Take every
+// anchor that survives into the draft holding a different figure, and draw an arrow
+// from the figure it held to the figure it now holds. A cycle in those arrows means
+// the figures went round between anchors rather than one figure being replaced: a
+// pair that swapped is the two-step cycle, three items rotated is the three-step one.
+// Moving an anchor's words along with its own figure (reordering items, clauses,
+// lines or sentences) leaves every anchor holding what it held and draws no arrow at
+// all, and rewording around a figure retires that anchor instead of pointing it at a
+// new figure. Every refusal can name the phrases that traded.
+function exchangedFigures(source, revised) {
+  const before = anchorFigures(source), after = anchorFigures(revised);
+  const arrows = new Map();
+  for (const [anchor, held] of before) {
+    const holds = after.get(anchor);
+    if (held === null || holds == null || holds === held) continue;
+    if (!arrows.has(held)) arrows.set(held, new Set());
+    arrows.get(held).add(holds);
+  }
+  const state = new Map();
+  const walk = figure => {
+    if (state.get(figure) === 'walking') return true;
+    if (state.get(figure) === 'settled') return false;
+    state.set(figure, 'walking');
+    const round = [...(arrows.get(figure) ?? [])].some(walk);
+    state.set(figure, 'settled');
+    return round;
+  };
+  return [...arrows.keys()].some(walk);
+}
 function strings(value, min = 1) {
   return Array.isArray(value) && value.length >= min && value.length <= 8 && value.every(v => typeof v === 'string' && v.trim().length > 0 && v.length <= 600);
 }
@@ -49,6 +156,7 @@ function inspectDraft(input, worker, checker) {
   const original = identifiers(input.promotion), revised = identifiers(w.text);
   if (original.size !== revised.size || [...original].some(n => !revised.has(n))) fail(422, 'CHECK_FAILED', 'The draft changed a numeric fact. No checkout or charge was created.');
   if (canonical(currencyFacts(input.promotion)) !== canonical(currencyFacts(w.text))) fail(422, 'CHECK_FAILED', 'The draft changed a currency fact. No checkout or charge was created.');
+  if (exchangedFigures(input.promotion, w.text)) fail(422, 'CHECK_FAILED', 'The draft swapped two figures between the things they describe. No checkout or charge was created.');
   return {
     text:w.text.trim(), changes:w.changes,
     flags:{human:[...new Set([...w.human,...c.human])],environment:[...new Set([...w.environment,...c.environment])]},
