@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "1.0.0",
+  "status": "LOCAL_FEATURE_TESTS_PASS_RELEASE_HOLD",
+  "baseCommit": "ba4c4b2844f9ad0093916805d87c2b14f43f72e3",
+  "baseTree": "c886b3374c565a8a98805358f95fa820bdf71b17",
+  "nodeVersion": "v22.16.0",
+  "testCommand": "node --test tests/diagnostic/*.test.mjs",
+  "tests": {
+    "passed": 49,
+    "failed": 0,
+    "skipped": 0,
+    "terminalPathsExercised": 3457
+  },
+  "moduleSyntax": "PASS",
+  "browser": "BLOCKED: ERR_BLOCKED_BY_ADMINISTRATOR before page load; no retry or bypass",
+  "fullRepositoryTestBuild": "NOT_RUN_LOCALLY",
+  "independentP95": "NOT_ASSESSED",
+  "production": "NOT_DEPLOYED",
+  "note": "Unsigned local feature evidence. Manifest covers all feature files except itself; not a release or independent-review receipt.",
+  "files": [
+    {
+      "path": ".github/workflows/adaptive-diagnostic.yml",
+      "bytes": 1248,
+      "gitBlobSha": "d1bee25927b52c411a4dd8c42f92adde46cbe3cc",
+      "sha256": "086bfa1077b816461c244c9498d51822e17362b7fa68f2888027552f0e20d1a3"
+    },
+    {
+      "path": "DIAGNOSTIC_MVP.md",
+      "bytes": 6183,
+      "gitBlobSha": "4d22d6079fc4e91fe1bbdd0352a4cff6600ffc54",
+      "sha256": "12ad51272764d6e5824f8b537146d3076fc5880d12190f3bc5ab3ff777463aa5"
+    },
+    {
+      "path": "client/public/diagnostic/app.mjs",
+      "bytes": 3804,
+      "gitBlobSha": "b60fbba9377b2301452949e36b694d8e54c0973a",
+      "sha256": "972ef325e020f9a34b5fa835cb2a2904448da81bfbccef6458a2b6611b5466cc"
+    },
+    {
+      "path": "client/public/diagnostic/engine.mjs",
+      "bytes": 9509,
+      "gitBlobSha": "a15ceed7a80d2ce7a3f4d6c5bb654b06ef3e456b",
+      "sha256": "3b762177e521e012733519251fc0b4984927a351f5a06e68e22f5e7186467cce"
+    },
+    {
+      "path": "client/public/diagnostic/index.html",
+      "bytes": 4957,
+      "gitBlobSha": "a22be341c7c3023b731998ff104ee879b99af80a",
+      "sha256": "7666c9b67b616f97b1425960b09d988d51eceeec44cc7c27ec321106924748a2"
+    },
+    {
+      "path": "client/public/diagnostic/styles.css",
+      "bytes": 7076,
+      "gitBlobSha": "82f0c58e67fb78750e5021f2fee5a4b43127fe81",
+      "sha256": "9d963e1440532235cd65d238ed62f013ba4fb1a7408e1f31a568f15637391228"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-05-adaptive-diagnostic.md",
+      "bytes": 3818,
+      "gitBlobSha": "947369fe77ed6ada0c1a8e6b7461124fad3afd63",
+      "sha256": "1fbfe2a61643ec5ed58b482eb8736d1dc3bbe855826ae0d821b5409702c52dee"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-05-adaptive-diagnostic-design.md",
+      "bytes": 3871,
+      "gitBlobSha": "6ef9356f111b20a5bc7db7ed0f21aed9929df9e1",
+      "sha256": "10836353f98a1b6975f83ea22626ae9db4894001d07d687a49703e2281215e94"
+    },
+    {
+      "path": "tests/diagnostic/assets.test.mjs",
+      "bytes": 3425,
+      "gitBlobSha": "67c46a8fecc5bd3d7f735633504f9e03cf897994",
+      "sha256": "73c5a83768153c49a9a3987bd312d86fe2e0cb977fd68dcd473e0a8cfcc64159"
+    },
+    {
+      "path": "tests/diagnostic/browser_smoke.py",
+      "bytes": 8243,
+      "gitBlobSha": "04beef13faa4f9f3e5e0d655672c018fd1bf75c5",
+      "sha256": "d4c57c743520f86abefe1abe62ae7d44ddfdfb8d3db4c32e5f20c3e7db2d90b2"
+    },
+    {
+      "path": "tests/diagnostic/crm.test.mjs",
+      "bytes": 6766,
+      "gitBlobSha": "1368e0e20256d99ce340b4ce5e7c2c0ad20293fc",
+      "sha256": "2e36b23bc54cddc51a2d3322e3f7fed7fb729825e4f6c6b5b06a8dfc616933ff"
+    },
+    {
+      "path": "tests/diagnostic/engine.test.mjs",
+      "bytes": 7851,
+      "gitBlobSha": "f3d4c5b9a3f180b7578f1a016fe92af2cecd963a",
+      "sha256": "009b2ef90df19e15513b993b33777057e00e8dd9a5bfcc5de08529f1cf42f577"
+    },
+    {
+      "path": "tools/diagnostic/analyse-crm.mjs",
+      "bytes": 6026,
+      "gitBlobSha": "bfab12f66eb7338761b64fe8e7cce96f5edc2e0b",
+      "sha256": "1b97ec8ae92e53a7a11dc544face0924ef035bf7e13e8e836a1630259ee731b7"
+    },
+    {
+      "path": "vercel.json",
+      "bytes": 2056,
+      "gitBlobSha": "8a862feeeae42a5821ffc2dbac349cf0c7352431",
+      "sha256": "939461ba6846f5677ea97c51d4f00832a311a1801b39a415f3b213f8eec0e218"
+    }
+  ]
+}

@@ -21,6 +21,22 @@
   },
   "rewrites": [
     {
+      "source": "/diagnostic/index.html",
+      "destination": "/diagnostic/index.html"
+    },
+    {
+      "source": "/diagnostic/app.mjs",
+      "destination": "/diagnostic/app.mjs"
+    },
+    {
+      "source": "/diagnostic/engine.mjs",
+      "destination": "/diagnostic/engine.mjs"
+    },
+    {
+      "source": "/diagnostic/styles.css",
+      "destination": "/diagnostic/styles.css"
+    },
+    {
       "source": "/promotion-fix.html",
       "destination": "/promotion-fix.html"
     },
