@@ -44,6 +44,10 @@ function context(authenticated = true): TrpcContext {
 beforeEach(() => {
   vi.resetModules();
   vi.stubEnv("STRIPE_SECRET_KEY", undefined);
+  vi.stubEnv("PUBLIC_BASE_URL", "https://shop.example.test");
+  vi.stubEnv("PROMOTION_PUBLIC_ORIGIN", undefined);
+  vi.stubEnv("VERCEL_ENV", undefined);
+  vi.stubEnv("NODE_ENV", "production");
   createSession.mockReset();
 });
 
@@ -101,7 +105,7 @@ describe("checkout configuration boundary", () => {
 
     await expect(
       caller.checkout.createSession({ productId: "missing-product" })
-    ).rejects.toThrow("Product not found: missing-product");
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "Unknown product." });
     expect(createSession).not.toHaveBeenCalled();
   });
 
@@ -176,5 +180,55 @@ describe("checkout configuration boundary", () => {
         ],
       })
     );
+  });
+});
+
+describe("composed checkout configuration and return-origin boundary", () => {
+  for (const headers of [
+    { origin: "https://attacker.example" },
+    { referer: "https://attacker.example/paid" },
+  ]) it("ignores caller-controlled return host " + JSON.stringify(headers), async () => {
+    const { appRouter } = await import("./routers");
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_checkout_local_fixture");
+    createSession.mockResolvedValue({ url: "https://checkout.example.test/session" });
+    const ctx = context();
+    ctx.req.headers = headers;
+    await appRouter.createCaller(ctx).checkout.createSession({ productId: "ai-governance-checklist" });
+    expect(createSession).toHaveBeenCalledWith(expect.objectContaining({
+      success_url: "https://shop.example.test/checkout/success?session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: "https://shop.example.test/checkout/cancel",
+    }));
+  });
+
+  it("refuses an unconfigured production origin before Stripe", async () => {
+    const { appRouter } = await import("./routers");
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_checkout_local_fixture");
+    vi.stubEnv("PUBLIC_BASE_URL", undefined);
+    await expect(appRouter.createCaller(context()).checkout.createSession({
+      productId: "ai-governance-checklist",
+    })).rejects.toMatchObject({ code: "PRECONDITION_FAILED", message: "Checkout is not configured" });
+    expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it("rereads key availability after a successful checkout", async () => {
+    const { appRouter } = await import("./routers");
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_checkout_local_fixture");
+    createSession.mockResolvedValue({ url: "https://checkout.example.test/session" });
+    const caller = appRouter.createCaller(context());
+    await caller.checkout.createSession({ productId: "ai-governance-checklist" });
+    vi.stubEnv("STRIPE_SECRET_KEY", undefined);
+    await expect(caller.checkout.createSession({
+      productId: "ai-governance-checklist",
+    })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(createSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses a whitespace-only key before Stripe", async () => {
+    const { appRouter } = await import("./routers");
+    vi.stubEnv("STRIPE_SECRET_KEY", "   ");
+    await expect(appRouter.createCaller(context()).checkout.createSession({
+      productId: "ai-governance-checklist",
+    })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(createSession).not.toHaveBeenCalled();
   });
 });

@@ -1,0 +1,2 @@
+# Inline CSP script hashes must be identical on Windows and Linux.
+client/index.html text eol=lf
