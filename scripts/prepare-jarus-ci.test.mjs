@@ -73,7 +73,43 @@ test('existing output is preserved and public checkout output is refused', async
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('canonicalized output paths containing CR or LF refuse before output or environment writes', () => {
+test('raw output paths containing CR or LF refuse before output or environment writes on every platform', context => {
+  const root = mkdtempSync(join(tmpdir(), 'receipt-pin-raw-path-'));
+  const cliDirectory = mkdtempSync(join(import.meta.dirname, 'receipt-pin-cli-'));
+  try {
+    const cli = join(cliDirectory, 'prepare-jarus-ci.mjs');
+    copyFileSync(new URL('./prepare-jarus-ci.mjs', import.meta.url), cli);
+    writeFileSync(join(cliDirectory, 'jarus-ci-pin.json'), JSON.stringify(pin));
+    const input = join(root, 'source.ts');
+    writeFileSync(input, source);
+    if (process.platform === 'win32') {
+      context.diagnostic('Windows rejects CR/LF directory names; this tests direct-input refusal, not canonicalized symlink coverage.');
+    }
+    for (const [label, delimiter] of [['lf', '\n'], ['cr', '\r']]) {
+      const output = join(root, `runtime${delimiter}JARUS_CI_TEST_INJECTED=1`);
+      if (process.platform === 'win32') assert.throws(() => mkdirSync(output), { code: 'EINVAL' });
+      const envFile = join(root, `github-env-${label}`);
+      const before = 'EXISTING_ENV=untouched\n';
+      writeFileSync(envFile, before);
+      const child = spawnSync(process.execPath, [cli], {
+        encoding: 'utf8',
+        env: { ...process.env, JARUS_CI_SOURCE_PATH: input, JARUS_CI_OUTPUT_DIR: output, GITHUB_ENV: envFile },
+      });
+      assert.equal(child.status, 2, `${label}: ${child.stderr}`);
+      assert.match(child.stderr, /INVALID_PATH/);
+      assert.equal(child.stdout, '');
+      assert.equal(existsSync(output), false);
+      assert.equal(readFileSync(envFile, 'utf8'), before);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(cliDirectory, { recursive: true, force: true });
+  }
+});
+
+test('canonicalized output paths containing CR or LF refuse before output or environment writes', {
+  skip: process.platform === 'win32' ? 'Windows forbids CR/LF directory names; raw-input refusal is covered separately, canonical symlink coverage requires a supporting filesystem.' : false,
+}, () => {
   const root = mkdtempSync(join(tmpdir(), 'receipt-pin-canonical-path-'));
   const cliDirectory = mkdtempSync(join(import.meta.dirname, 'receipt-pin-cli-'));
   try {

@@ -1,3 +1,4 @@
+import { COOKIE_NAME, HOST_COOKIE_NAME } from "../shared/const";
 import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
@@ -54,7 +55,13 @@ describe("Public Face — tRPC stack", () => {
     const caller = appRouter.createCaller(ctx);
     const result = await caller.auth.logout();
     expect(result).toEqual({ success: true });
-    expect(clearedCookies.length).toBe(1);
+    // Was 1. Sign-out now clears the `__Host-` prefixed name AND the legacy
+    // one, so a user still holding a pre-prefix cookie is signed out rather
+    // than left carrying a cookie the server no longer reads. Asserted by name
+    // so this does not pass while leaving one uncleared.
+    const clearedNames = clearedCookies.map(c => c.name);
+    expect(clearedNames).toContain(HOST_COOKIE_NAME);
+    expect(clearedNames).toContain(COOKIE_NAME);
   });
 });
 

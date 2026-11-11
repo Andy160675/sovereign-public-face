@@ -7,7 +7,7 @@ Clean CI / clean install of `sovereign-public-face` must **not** vendor private 
 
 | Variable | Meaning |
 |----------|---------|
-| `JARUS_RECEIPT_ENGINE_PATH` | **Absolute** path to the reviewed jarus entry (`…/dist/index.js`) |
+| `JARUS_RECEIPT_ENGINE_PATH` | **Absolute** path to the reviewed canonical entry (`receipt-engine.cjs` in the current CI route) |
 | `JARUS_RECEIPT_ENGINE_SHA256` | SHA-256 of that file’s bytes (must match) |
 
 ### Pin digest (this Stage-3 seal)
@@ -27,11 +27,29 @@ when it changes. Do not claim the old digest without re-hashing.
 ## Local / CI run
 
 ```bash
-export JARUS_RECEIPT_ENGINE_PATH="/absolute/path/to/jarus/dist/index.js"
-export JARUS_RECEIPT_ENGINE_SHA256="eb95f6331f3396703c4dee49158849194126bb8ff092100cf3a9a7c2d6dafa48"
-export STRIPE_SECRET_KEY="sk_test_ci_dummy_not_live"   # module init only; no live Stripe
+export JARUS_CI_SOURCE_PATH="/private/source/receipt-engine.ts"
+export JARUS_CI_OUTPUT_DIR="/private/temporary/receipt-runtime"
+node scripts/prepare-jarus-ci.mjs
+export JARUS_RECEIPT_ENGINE_PATH="$JARUS_CI_OUTPUT_DIR/receipt-engine.cjs"
+export JARUS_RECEIPT_ENGINE_SHA256="775d572ad04b2d17aead2567a98a730d971d14eb74b3da8cc5fa9ddd62249adb"
 node scripts/ci-with-jarus-pin.mjs   # fails closed on missing/wrong pin, then npm test
 ```
+
+The current canonical-source provisioning route is documented in
+[`scripts/JARUS-CI.md`](../scripts/JARUS-CI.md) and pinned in
+[`scripts/jarus-ci-pin.json`](../scripts/jarus-ci-pin.json). The Stage-3 digests
+above are historical observations. The current preparer requires the exact
+private source, TypeScript 5.9.3 and matching emitted bytes; its output
+must be outside the public checkout and must not already contain the entry.
+No global `STRIPE_SECRET_KEY` is needed to import public authentication and
+product routes. Checkout tests supply synthetic fixture keys and replace only
+the network boundary while retaining the real SDK constructor. An authenticated
+checkout request without a key fails closed with `PRECONDITION_FAILED`
+(`Checkout is not configured`). This does not enable production checkout.
+
+Public CI still requires fresh authenticated private-integration proof for each
+exact public commit. This source change does not supply that proof, alter the
+canonical engine or webhook design, or replace the MySQL durability checks.
 
 ### Unit subset vs MySQL durability
 

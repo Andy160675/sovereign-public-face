@@ -1,7 +1,7 @@
 /*
  * DESIGN: Sovereign Obsidian — Dark Editorial Brutalism
  * Layout: Fixed top nav with transparent-to-solid scroll transition.
- * Nav items use DM Sans 500 weight. Logo uses Instrument Serif.
+ * Nav items use the system sans-serif stack at weight 500. Logo uses the local serif stack.
  * Gold accent on active/hover states. Minimal, authoritative.
  */
 import { Link, useLocation } from "wouter";

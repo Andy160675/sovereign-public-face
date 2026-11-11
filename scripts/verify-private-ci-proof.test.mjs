@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { verifyPrivateProof, fetchPrivateProof } from './verify-private-ci-proof.mjs';
 
 const sha = 'a'.repeat(40);
@@ -78,7 +79,7 @@ test('network and HTTP errors never expose token or response content', async () 
 });
 test('CLI fails immediately without an exact commit and importing stays inert', () => {
   const cli = new URL('./verify-private-ci-proof.mjs', import.meta.url);
-  const denied = spawnSync(process.execPath, [cli.pathname], {
+  const denied = spawnSync(process.execPath, [fileURLToPath(cli)], {
     env: { ...process.env, PUBLIC_CI_PROOF_SHA: '', GITHUB_TOKEN: '' }, encoding: 'utf8',
   });
   assert.equal(denied.status, 2);

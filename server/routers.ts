@@ -1,14 +1,13 @@
-import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
+import { getSessionCookieOptions, sessionCookieNamesToClear } from "./_core/cookies";
+import { resolvePublicOrigin } from "./_core/publicOrigin";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { PRODUCTS, getProductById } from "./products";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-02-25.clover",
-});
+export { resolvePublicOrigin as resolveReturnOrigin };
 
 export const appRouter = router({
   system: systemRouter,
@@ -16,7 +15,9 @@ export const appRouter = router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      for (const name of sessionCookieNamesToClear(ctx.req)) {
+        ctx.res.clearCookie(name, { ...cookieOptions, maxAge: -1 });
+      }
       return {
         success: true,
       } as const;
@@ -65,10 +66,30 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const product = getProductById(input.productId);
         if (!product) {
-          throw new Error(`Product not found: ${input.productId}`);
+          throw new TRPCError({ code: "NOT_FOUND", message: "Unknown product." });
         }
 
-        const origin = ctx.req.headers.origin || ctx.req.headers.referer || "http://localhost:3000";
+        const secretKey = process.env.STRIPE_SECRET_KEY;
+        if (!secretKey?.trim()) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Checkout is not configured",
+          });
+        }
+        // Preserve request-time key validation while binding return URLs only
+        // to configured origins. A caller cannot introduce a return host.
+        let origin: string;
+        let stripe: Stripe;
+        try {
+          origin = resolvePublicOrigin(ctx.req.headers.origin);
+          stripe = new Stripe(secretKey, { apiVersion: "2026-02-25.clover" });
+        } catch {
+          console.error("[checkout] configuration unavailable");
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Checkout is not configured",
+          });
+        }
 
         const sessionParams: Stripe.Checkout.SessionCreateParams = {
           mode: product.mode === "subscription" ? "subscription" : "payment",
