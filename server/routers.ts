@@ -1,3 +1,6 @@
+import { TRPCError } from "@trpc/server";
+import { resolvePublicOrigin } from "./_core/publicOrigin";
+export { resolvePublicOrigin as resolveReturnOrigin } from "./_core/publicOrigin";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -6,9 +9,11 @@ import { PRODUCTS, getProductById } from "./products";
 import { z } from "zod";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-02-25.clover",
-});
+function createStripeClient() {
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!key) throw new Error("Payment service is not configured.");
+  return new Stripe(key, { apiVersion: "2026-02-25.clover" });
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -68,7 +73,15 @@ export const appRouter = router({
           throw new Error(`Product not found: ${input.productId}`);
         }
 
-        const origin = ctx.req.headers.origin || ctx.req.headers.referer || "http://localhost:3000";
+        let origin: string;
+        try {
+          origin = resolvePublicOrigin(ctx.req.headers.origin);
+        } catch {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Checkout is not configured",
+          });
+        }
 
         const sessionParams: Stripe.Checkout.SessionCreateParams = {
           mode: product.mode === "subscription" ? "subscription" : "payment",
@@ -99,7 +112,7 @@ export const appRouter = router({
           cancel_url: `${origin}/checkout/cancel`,
         };
 
-        const session = await stripe.checkout.sessions.create(sessionParams);
+        const session = await createStripeClient().checkout.sessions.create(sessionParams);
         return { url: session.url };
       }),
   }),
