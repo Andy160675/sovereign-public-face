@@ -58,22 +58,29 @@ function createWindow() {
   const url = app.isPackaged ? PRODUCTION_URL : DEV_URL;
   mainWindow.loadURL(url);
 
-  // Open external links in default browser
+  // Renderer links may open ordinary web/mail URLs, never OS protocol handlers
+  // or local files. Keep every popup out of an unreviewed BrowserWindow.
+  const externalProtocols = new Set(['https:', 'http:', 'mailto:']);
+  function openExternal(raw) {
+    let target;
+    try { target = new URL(raw); } catch { return; }
+    if (!externalProtocols.has(target.protocol)) return;
+    Promise.resolve(shell.openExternal(target.href)).catch(() => {});
+  }
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https://checkout.stripe.com') || url.startsWith('https://')) {
-      shell.openExternal(url);
-      return { action: 'deny' };
-    }
-    return { action: 'allow' };
+    openExternal(url);
+    return { action: 'deny' };
   });
 
-  // Handle navigation to external URLs
   mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
-    const parsedUrl = new URL(navigationUrl);
-    const appUrl = new URL(url);
-    if (parsedUrl.origin !== appUrl.origin) {
+    let target;
+    try { target = new URL(navigationUrl); } catch {
       event.preventDefault();
-      shell.openExternal(navigationUrl);
+      return;
+    }
+    if (target.origin !== new URL(url).origin) {
+      event.preventDefault();
+      openExternal(navigationUrl);
     }
   });
 
