@@ -29,9 +29,20 @@ when it changes. Do not claim the old digest without re-hashing.
 ```bash
 export JARUS_RECEIPT_ENGINE_PATH="/absolute/path/to/jarus/dist/index.js"
 export JARUS_RECEIPT_ENGINE_SHA256="eb95f6331f3396703c4dee49158849194126bb8ff092100cf3a9a7c2d6dafa48"
-export STRIPE_SECRET_KEY="sk_test_ci_dummy_not_live"   # module init only; no live Stripe
 node scripts/ci-with-jarus-pin.mjs   # fails closed on missing/wrong pin, then npm test
 ```
+
+No global `STRIPE_SECRET_KEY` is needed for this suite. Webhook tests supply
+synthetic keys within their fixtures. Public authentication and catalog routes
+load without checkout configuration; an authenticated checkout request without
+a key fails closed with `PRECONDITION_FAILED` (`Checkout is not configured`).
+
+The hosted `public-client-boundary.yml` workflow does not currently provision
+the private engine. A clean runner must receive the reviewed engine through a
+private distribution or mount and bind its actual bytes to the two variables
+above before the receipt tests can pass. Adding a dummy Stripe key does not
+resolve that missing dependency. Keep the receipt tests enabled and keep the
+private engine out of this public repository.
 
 ### Unit subset vs MySQL durability
 
