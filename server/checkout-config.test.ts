@@ -43,6 +43,7 @@ function context(authenticated = true): TrpcContext {
 
 beforeEach(() => {
   vi.resetModules();
+  vi.stubEnv("PUBLIC_BASE_URL", "https://shop.example.test");
   vi.stubEnv("STRIPE_SECRET_KEY", undefined);
   createSession.mockReset();
 });
