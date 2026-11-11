@@ -1,6 +1,7 @@
 import { createPromotionService, fault } from '../server/promotion-fix-service.mjs';
 import { createNeonStore, createAnthropicModel, createStripeClient } from '../server/promotion-fix-adapters.mjs';
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { consume, PROMOTION_LIMIT } from '../server/rateLimit.mjs';
 
 const LIMIT = 12000;
 async function jsonBody(req) {
@@ -20,7 +21,12 @@ async function jsonBody(req) {
   catch { throw fault(400,'INVALID_JSON','Send one JSON request.'); }
 }
 
-export function createHandler({service,env=process.env}={}) {
+/**
+ * `limit` is injectable so the HTTP tests stay offline. It defaults to the
+ * shared Upstash-backed limiter in `server/rateLimit.mjs`, which is a no-op
+ * when no Upstash credentials are configured.
+ */
+export function createHandler({service,env=process.env,limit=consume}={}) {
   let liveService=service;
   return async function handler(req,res) {
     res.setHeader('Cache-Control','no-store, private');
@@ -36,10 +42,25 @@ export function createHandler({service,env=process.env}={}) {
       const value=await jsonBody(req);
       const action=value.action;
       if (!['prepare','checkout','result','simulate'].includes(action)) throw fault(400,'INVALID_ACTION','Unknown action.');
-      if (!liveService) liveService=createPromotionService({store:createNeonStore(env),model:createAnthropicModel(env),stripe:createStripeClient(env),env});
       // Vercel overwrites this platform header. Raw addresses are never stored or logged.
       const forwarded=env.VERCEL ? req.headers['x-vercel-forwarded-for'] : null;
       const ip=typeof forwarded==='string' ? forwarded.split(',')[0].trim() : req.socket?.remoteAddress;
+      // Envelope budget, before the service is constructed or any store, model
+      // or Stripe call is made. `prepare` has its own hourly per-IP limit inside
+      // promotion-fix-service.mjs guarding two paid model calls; this one also
+      // covers 'checkout', 'result' and 'simulate', which had none, and it is
+      // keyed on the same trusted address that limit uses.
+      // Fail OPEN. `consume` already swallows store errors, so reaching the
+      // catch means the limiter itself is broken — and a broken mitigation must
+      // not refuse paying customers. Allow the request and say so loudly.
+      let verdict={allowed:true,retryAfterSeconds:0};
+      try { verdict=await limit('promotion-fix',PROMOTION_LIMIT,`promotion-ip:${ip ?? 'unknown'}`); }
+      catch (limiterError) { console.error('[rate-limit] promotion-fix limiter failed, allowing the request:',limiterError instanceof Error?limiterError.message:limiterError); }
+      if (!verdict.allowed) {
+        res.setHeader('Retry-After',String(verdict.retryAfterSeconds));
+        throw fault(429,'RATE_LIMITED','Too many requests. Please try again shortly.');
+      }
+      if (!liveService) liveService=createPromotionService({store:createNeonStore(env),model:createAnthropicModel(env),stripe:createStripeClient(env),env});
       const key=req.headers['x-promotion-rehearsal-key'];
       let output;
       if(action==='prepare') output=await liveService.prepare(value,{ip,rehearsalKey:typeof key==='string'?key:undefined});
