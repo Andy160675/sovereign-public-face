@@ -111,6 +111,7 @@ describe("Stripe checkout configuration", () => {
     };
     const caller = appRouter.createCaller(ctx);
     await expect(caller.auth.me()).resolves.toMatchObject({ id: 1 });
+    vi.stubEnv("PUBLIC_BASE_URL", "https://shop.example.test");
     for (const key of ["", "   "]) {
       vi.stubEnv("STRIPE_SECRET_KEY", key);
       await expect(caller.checkout.createSession({ productId: PRODUCTS[0]!.id })).rejects.toThrow(

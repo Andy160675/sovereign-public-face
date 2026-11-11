@@ -1,3 +1,6 @@
+import { TRPCError } from "@trpc/server";
+import { resolvePublicOrigin } from "./_core/publicOrigin";
+export { resolvePublicOrigin as resolveReturnOrigin } from "./_core/publicOrigin";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -70,7 +73,15 @@ export const appRouter = router({
           throw new Error(`Product not found: ${input.productId}`);
         }
 
-        const origin = ctx.req.headers.origin || ctx.req.headers.referer || "http://localhost:3000";
+        let origin: string;
+        try {
+          origin = resolvePublicOrigin(ctx.req.headers.origin);
+        } catch {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Checkout is not configured",
+          });
+        }
 
         const sessionParams: Stripe.Checkout.SessionCreateParams = {
           mode: product.mode === "subscription" ? "subscription" : "payment",
