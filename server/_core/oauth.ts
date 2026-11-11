@@ -5,10 +5,9 @@ import * as db from "../db";
 import { getSessionCookie } from "./cookies";
 import { ENV } from "./env";
 import {
-  STATE_COOKIE_NAME,
   createNonce,
   encodeState,
-  getStateCookieOptions,
+  getStateCookie,
   noncesMatch,
   parseState,
 } from "./oauthState";
@@ -90,7 +89,8 @@ export function registerOAuthRoutes(app: Express) {
     url.searchParams.set("state", encodeState(redirectUri, nonce));
     url.searchParams.set("type", "signIn");
 
-    res.cookie(STATE_COOKIE_NAME, nonce, getStateCookieOptions(req));
+    const stateCookie = getStateCookie(req);
+    res.cookie(stateCookie.name, nonce, stateCookie.options);
     res.redirect(302, url.toString());
   });
 
@@ -106,12 +106,12 @@ export function registerOAuthRoutes(app: Express) {
     // Verified BEFORE any token is exchanged. Exchanging first and checking
     // afterwards would still mint a session for whoever owns the code.
     const parsed = parseState(state);
-    const expectedNonce = readCookie(req, STATE_COOKIE_NAME);
+    const stateCookie = getStateCookie(req);
+    const expectedNonce = readCookie(req, stateCookie.name);
 
     // Single use: cleared whether this attempt succeeds or fails, so a captured
     // callback URL cannot be replayed against the same cookie.
-    const clearOptions = getStateCookieOptions(req);
-    res.clearCookie(STATE_COOKIE_NAME, { ...clearOptions, maxAge: -1 });
+    res.clearCookie(stateCookie.name, { ...stateCookie.options, maxAge: -1 });
 
     if (!parsed || !expectedNonce || !noncesMatch(parsed.nonce, expectedNonce)) {
       // One message for all three cases on purpose. Distinguishing "no cookie"

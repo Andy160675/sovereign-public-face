@@ -310,3 +310,44 @@ describe("noncesMatch", () => {
     expect(noncesMatch("é", "e")).toBe(false);
   });
 });
+
+describe("OAuth state cookie cannot be planted by a sibling host", () => {
+  it("refuses a production callback with only an attacker-planted legacy nonce", async () => {
+    exchangeCodeForToken.mockResolvedValue({ accessToken: "attacker-at" });
+    getUserInfo.mockResolvedValue({ openId: "attacker", name: "Attacker" });
+    createSessionToken.mockResolvedValue("attacker-session");
+    const nonce = createNonce();
+    const state = encodeState("https://sovereign.example/api/oauth/callback", nonce);
+    const result = await callRoute(
+      "/api/oauth/callback", { code: "attacker-code", state }, `oauth_state=${nonce}`,
+    );
+    expect(result.status).toBe(400);
+    expect(exchangeCodeForToken).not.toHaveBeenCalled();
+    expect(createSessionToken).not.toHaveBeenCalled();
+  });
+
+  it("sets a production nonce with the browser-enforced host-only prefix", async () => {
+    const { getStateCookieOptions } = await import("./_core/oauthState");
+    const result = await callRoute("/api/oauth/start", {});
+    expect(result.setCookie.some(c => c.startsWith("__Host-oauth_state="))).toBe(true);
+    const options = getStateCookieOptions({ protocol: "http", headers: {} } as any);
+    expect(options).toMatchObject({ secure: true, httpOnly: true, path: "/", sameSite: "lax" });
+    expect(options.domain).toBeUndefined();
+  });
+});
+
+it("keeps unprefixed state only for plain HTTP development", async () => {
+  const previous = process.env.NODE_ENV;
+  try {
+    process.env.NODE_ENV = "development";
+    const { getStateCookie } = await import("./_core/oauthState");
+    const local = getStateCookie({ protocol: "http", headers: {} } as any);
+    expect(local.name).toBe("oauth_state");
+    expect(local.options.secure).toBe(false);
+    const tls = getStateCookie({ protocol: "https", headers: {} } as any);
+    expect(tls.name).toBe("__Host-oauth_state");
+    expect(tls.options).toMatchObject({ path: "/", secure: true });
+  } finally {
+    process.env.NODE_ENV = previous;
+  }
+});

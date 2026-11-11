@@ -1,5 +1,6 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import type { CookieOptions, Request } from "express";
+import { usesHostPrefix } from "./cookies";
 
 /**
  * CSRF binding for the OAuth authorization code flow.
@@ -25,8 +26,10 @@ import type { CookieOptions, Request } from "express";
  * The fix is the standard one. The server issues a single-use random nonce,
  * stores it in an httpOnly cookie, and carries it inside `state`. On return,
  * both must be present and equal. An attacker can choose the `state` in a URL
- * they craft, but cannot set the victim's httpOnly cookie, so the two cannot be
- * made to agree.
+ * they craft. HttpOnly alone does not stop a sibling host from planting a
+ * Domain cookie with the same name. The __Host- prefix also requires Secure,
+ * Path=/ and no Domain, so the browser rejects a sibling's injected nonce.
+ * Plain-HTTP local development retains a separate unprefixed cookie.
  *
  * ## Why `state` is structured rather than just the nonce
  *
@@ -39,7 +42,16 @@ import type { CookieOptions, Request } from "express";
  */
 
 /** Name of the short-lived cookie holding the nonce. */
-export const STATE_COOKIE_NAME = "oauth_state";
+export const STATE_COOKIE_NAME = "__Host-oauth_state";
+const LOCAL_STATE_COOKIE_NAME = "oauth_state";
+
+/** No legacy fallback on TLS/production: a sibling can plant an unprefixed cookie. */
+export function getStateCookie(req: Request): { name: string; options: CookieOptions } {
+  return {
+    name: usesHostPrefix(req) ? STATE_COOKIE_NAME : LOCAL_STATE_COOKIE_NAME,
+    options: getStateCookieOptions(req),
+  };
+}
 
 /** Ten minutes is ample for a sign-in and short enough to limit replay. */
 export const STATE_TTL_MS = 10 * 60 * 1000;
@@ -130,19 +142,16 @@ export function noncesMatch(a: string, b: string): boolean {
  * `strict` would withhold the cookie on exactly that request, breaking every
  * sign-in. Lax sends it, which is what makes the comparison possible.
  *
- * Scoped to `/api/oauth` so it is not attached to unrelated requests, and
- * `Secure` in production for the same reason the session cookie is.
+ * Path=/ and no Domain are mandatory for the __Host- prefix. The server only
+ * consumes this cookie on the OAuth callback. Secure/name selection uses the
+ * same predicate as the session cookie.
  */
 export function getStateCookieOptions(req: Request): CookieOptions {
-  const forwarded = req.headers["x-forwarded-proto"];
-  const protocols = Array.isArray(forwarded) ? forwarded : (forwarded ?? "").split(",");
-  const isHttps = req.protocol === "https" || protocols.some(p => p.trim().toLowerCase() === "https");
-
   return {
     httpOnly: true,
-    path: "/api/oauth",
+    path: "/",
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production" ? true : isHttps,
+    secure: usesHostPrefix(req),
     maxAge: STATE_TTL_MS,
   };
 }
