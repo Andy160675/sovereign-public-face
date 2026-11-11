@@ -48,3 +48,8 @@ Pinned pnpm 10.4.1 installed the unchanged lockfile with lifecycle scripts disab
 - `git diff --check`: exit 0.
 
 Commands use `node node_modules/vitest/vitest.mjs run <named-test-files> --maxWorkers=1 --minWorkers=1`; native tests use `node --test server/promotion-fix-{service,adapters,http}.test.mjs` (expand the three paths in PowerShell). These are scoped regressions, not authenticated private CI or the MySQL durability suite.
+
+
+## Windows CSP build determinism
+
+A native Windows build exposed an existing checkout-dependent CSP failure: CRLF conversion changed the inline service-worker script bytes, while both CSP declarations correctly retained the LF hash. Added a narrow `.gitattributes` rule, `client/index.html text eol=lf`, and normalized the working file. No script allowlist hash or directive was weakened. The full Vite/CSP/esbuild build then passed, with both inline hashes matching both CSP declarations; built public-client boundary validation passed. Existing analytics-placeholder and bundle-size warnings remain.
